@@ -177,7 +177,7 @@ export class BlockPulseStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, // On-demand capacity
       removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true, // Enable point-in-time recovery
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true }, // Enable point-in-time recovery
       encryption: dynamodb.TableEncryption.DEFAULT, // Use AWS owned CMK
       timeToLiveAttribute: 'TTL', // TTL attribute for expiring items
     });
