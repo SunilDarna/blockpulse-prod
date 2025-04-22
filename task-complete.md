@@ -87,3 +87,49 @@ Implemented a REST API Gateway for the BlockPulse application to provide secure 
 - Implement additional API endpoints for community management
 - Add comprehensive error handling and input validation
 - Set up API usage plans and throttling for production
+
+# Task T8: WebSocket API - Task Complete
+
+## Summary
+Implemented a WebSocket API for the BlockPulse application to enable real-time communication between users in communities, with proper connection management, message handling, and security.
+
+## Implementation Details
+- Created a WebSocket API with environment-specific naming (`BlockPulse-${envName}-WebSocketApi`)
+- Created a DynamoDB table to store WebSocket connections with TTL for automatic cleanup
+- Implemented WebSocket route handlers:
+  - $connect - Authenticates users and stores connection information
+  - $disconnect - Cleans up connection data when users disconnect
+  - sendMessage - Handles message sending and broadcasting to community members
+  - joinCommunity - Associates a connection with a specific community
+  - leaveCommunity - Removes a connection's association with a community
+- Added GSI to the connections table for efficient community-based queries
+- Configured security best practices:
+  - Token-based authentication for connections
+  - Validation of community membership before joining
+  - Message content sanitization
+  - Proper error handling and logging
+- Set up appropriate IAM permissions for Lambda functions
+- Added stack outputs for WebSocket API URL and connections table name
+
+## Validation
+
+### Functional Validation
+- The WebSocket API was successfully defined in the CDK stack
+- The connections table was created with appropriate indexes and TTL
+- Lambda handlers were implemented for all required routes
+- Connection authentication works properly using Cognito tokens
+- Messages can be sent and received within communities
+
+### Integrity Validation
+- Connections are properly authenticated before being established
+- Disconnections are properly handled with cleanup of resources
+- Messages are sanitized to prevent XSS attacks
+- Community membership is validated before allowing users to join
+- IAM permissions follow the principle of least privilege
+- Stale connections are automatically cleaned up via TTL
+
+## Next Steps
+- Proceed to Task T13: createCommunity Lambda
+- Implement message history retrieval functionality
+- Add typing indicators and read receipts
+- Set up WebSocket API usage plans and throttling for production

@@ -8,6 +8,7 @@ import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export class BlockPulseStack extends cdk.Stack {
   // Public properties to expose resources to other parts of the application
@@ -19,6 +20,8 @@ export class BlockPulseStack extends cdk.Stack {
   public readonly blockPulseTable: dynamodb.Table;
   public readonly blockPulseBucket: s3.Bucket;
   public readonly restApi: apigateway.RestApi;
+  public readonly webSocketApi: apigatewayv2.CfnApi;
+  public readonly connectionsTable: dynamodb.Table;
   public readonly lambdaAuthorizer: apigateway.TokenAuthorizer;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -628,6 +631,265 @@ export class BlockPulseStack extends cdk.Stack {
       value: this.restApi.url,
       description: 'The URL of the API Gateway',
       exportName: `${this.stackName}-ApiUrl`,
+    });
+
+    // T8: WebSocket API
+    
+    // Create a DynamoDB table to store WebSocket connections
+    this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
+      tableName: `BlockPulse-${envName}-Connections`,
+      partitionKey: {
+        name: 'connectionId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl', // TTL attribute for expiring connections
+    });
+
+    // Add GSI for community-based queries
+    this.connectionsTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: {
+        name: 'GSI1PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // Create WebSocket API
+    this.webSocketApi = new apigatewayv2.CfnApi(this, 'WebSocketApi', {
+      name: `BlockPulse-${envName}-WebSocketApi`,
+      protocolType: 'WEBSOCKET',
+      routeSelectionExpression: '$request.body.action',
+    });
+
+    // Create WebSocket stage
+    const webSocketStage = new apigatewayv2.CfnStage(this, 'WebSocketStage', {
+      apiId: this.webSocketApi.ref,
+      stageName: 'v1',
+      autoDeploy: true,
+      defaultRouteSettings: {
+        throttlingBurstLimit: 100,
+        throttlingRateLimit: 50,
+        dataTraceEnabled: !isProd,
+        loggingLevel: isProd ? 'ERROR' : 'INFO',
+      },
+    });
+
+    // Create Lambda functions for WebSocket routes
+    
+    // $connect handler
+    const connectHandler = new lambda.Function(this, 'WebSocketConnectHandler', {
+      functionName: `BlockPulse-${envName}-WebSocketConnect`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/websocket/connect.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+        CONNECTIONS_TABLE_NAME: this.connectionsTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the connect handler
+    this.connectionsTable.grantWriteData(connectHandler);
+    this.blockPulseTable.grantReadWriteData(connectHandler);
+    connectHandler.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:GetUser'],
+      resources: ['*'], // GetUser operates on the access token, not the user pool
+    }));
+
+    // $disconnect handler
+    const disconnectHandler = new lambda.Function(this, 'WebSocketDisconnectHandler', {
+      functionName: `BlockPulse-${envName}-WebSocketDisconnect`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/websocket/disconnect.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        TABLE_NAME: this.blockPulseTable.tableName,
+        CONNECTIONS_TABLE_NAME: this.connectionsTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the disconnect handler
+    this.connectionsTable.grantReadWriteData(disconnectHandler);
+    this.blockPulseTable.grantReadWriteData(disconnectHandler);
+
+    // sendMessage handler
+    const sendMessageHandler = new lambda.Function(this, 'WebSocketSendMessageHandler', {
+      functionName: `BlockPulse-${envName}-WebSocketSendMessage`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/websocket/send-message.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        TABLE_NAME: this.blockPulseTable.tableName,
+        CONNECTIONS_TABLE_NAME: this.connectionsTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the send message handler
+    this.connectionsTable.grantReadWriteData(sendMessageHandler);
+    this.blockPulseTable.grantReadWriteData(sendMessageHandler);
+    
+    // Add permission to manage WebSocket connections
+    const apiGatewayManageConnectionPolicy = new iam.PolicyStatement({
+      actions: ['execute-api:ManageConnections'],
+      resources: [`arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/${webSocketStage.stageName}/*`],
+    });
+    sendMessageHandler.addToRolePolicy(apiGatewayManageConnectionPolicy);
+
+    // joinCommunity handler
+    const joinCommunityHandler = new lambda.Function(this, 'WebSocketJoinCommunityHandler', {
+      functionName: `BlockPulse-${envName}-WebSocketJoinCommunity`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/websocket/join-community.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        TABLE_NAME: this.blockPulseTable.tableName,
+        CONNECTIONS_TABLE_NAME: this.connectionsTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the join community handler
+    this.connectionsTable.grantReadWriteData(joinCommunityHandler);
+    this.blockPulseTable.grantReadData(joinCommunityHandler);
+
+    // leaveCommunity handler
+    const leaveCommunityHandler = new lambda.Function(this, 'WebSocketLeaveCommunityHandler', {
+      functionName: `BlockPulse-${envName}-WebSocketLeaveCommunity`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/websocket/leave-community.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        CONNECTIONS_TABLE_NAME: this.connectionsTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the leave community handler
+    this.connectionsTable.grantReadWriteData(leaveCommunityHandler);
+
+    // Create WebSocket routes
+    
+    // $connect route
+    const connectIntegration = new apigatewayv2.CfnIntegration(this, 'ConnectIntegration', {
+      apiId: this.webSocketApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${connectHandler.functionArn}/invocations`,
+    });
+    
+    new apigatewayv2.CfnRoute(this, 'ConnectRoute', {
+      apiId: this.webSocketApi.ref,
+      routeKey: '$connect',
+      authorizationType: 'NONE', // Authorization is handled by validating the token in the Lambda
+      target: `integrations/${connectIntegration.ref}`,
+    });
+
+    // $disconnect route
+    const disconnectIntegration = new apigatewayv2.CfnIntegration(this, 'DisconnectIntegration', {
+      apiId: this.webSocketApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${disconnectHandler.functionArn}/invocations`,
+    });
+    
+    new apigatewayv2.CfnRoute(this, 'DisconnectRoute', {
+      apiId: this.webSocketApi.ref,
+      routeKey: '$disconnect',
+      authorizationType: 'NONE',
+      target: `integrations/${disconnectIntegration.ref}`,
+    });
+
+    // sendMessage route
+    const sendMessageIntegration = new apigatewayv2.CfnIntegration(this, 'SendMessageIntegration', {
+      apiId: this.webSocketApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${sendMessageHandler.functionArn}/invocations`,
+    });
+    
+    new apigatewayv2.CfnRoute(this, 'SendMessageRoute', {
+      apiId: this.webSocketApi.ref,
+      routeKey: 'sendMessage',
+      authorizationType: 'NONE', // Connection is already authenticated
+      target: `integrations/${sendMessageIntegration.ref}`,
+    });
+
+    // joinCommunity route
+    const joinCommunityIntegration = new apigatewayv2.CfnIntegration(this, 'JoinCommunityIntegration', {
+      apiId: this.webSocketApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${joinCommunityHandler.functionArn}/invocations`,
+    });
+    
+    new apigatewayv2.CfnRoute(this, 'JoinCommunityRoute', {
+      apiId: this.webSocketApi.ref,
+      routeKey: 'joinCommunity',
+      authorizationType: 'NONE', // Connection is already authenticated
+      target: `integrations/${joinCommunityIntegration.ref}`,
+    });
+
+    // leaveCommunity route
+    const leaveCommunityIntegration = new apigatewayv2.CfnIntegration(this, 'LeaveCommunityIntegration', {
+      apiId: this.webSocketApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: `arn:aws:apigateway:${this.region}:lambda:path/2015-03-31/functions/${leaveCommunityHandler.functionArn}/invocations`,
+    });
+    
+    new apigatewayv2.CfnRoute(this, 'LeaveCommunityRoute', {
+      apiId: this.webSocketApi.ref,
+      routeKey: 'leaveCommunity',
+      authorizationType: 'NONE', // Connection is already authenticated
+      target: `integrations/${leaveCommunityIntegration.ref}`,
+    });
+
+    // Grant Lambda permissions to be invoked by API Gateway
+    connectHandler.addPermission('WebSocketConnectPermission', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/*/$connect`,
+    });
+
+    disconnectHandler.addPermission('WebSocketDisconnectPermission', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/*/$disconnect`,
+    });
+
+    sendMessageHandler.addPermission('WebSocketSendMessagePermission', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/*/sendMessage`,
+    });
+
+    joinCommunityHandler.addPermission('WebSocketJoinCommunityPermission', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/*/joinCommunity`,
+    });
+
+    leaveCommunityHandler.addPermission('WebSocketLeaveCommunityPermission', {
+      principal: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${this.region}:${this.account}:${this.webSocketApi.ref}/*/leaveCommunity`,
+    });
+
+    // Output WebSocket API URL
+    new cdk.CfnOutput(this, 'WebSocketApiUrl', {
+      value: `wss://${this.webSocketApi.ref}.execute-api.${this.region}.amazonaws.com/${webSocketStage.stageName}`,
+      description: 'The URL of the WebSocket API',
+      exportName: `${this.stackName}-WebSocketApiUrl`,
+    });
+
+    // Output Connections Table Name
+    new cdk.CfnOutput(this, 'ConnectionsTableName', {
+      value: this.connectionsTable.tableName,
+      description: 'The name of the WebSocket connections table',
+      exportName: `${this.stackName}-ConnectionsTableName`,
     });
   }
 }
