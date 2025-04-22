@@ -15,6 +15,7 @@ export class BlockPulseStack extends cdk.Stack {
   public readonly identityPool: cognito.CfnIdentityPool;
   public readonly authenticatedRole: iam.Role;
   public readonly unauthenticatedRole: iam.Role;
+  public readonly blockPulseTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -163,6 +164,71 @@ export class BlockPulseStack extends cdk.Stack {
       },
     });
 
+    // T5: DynamoDB Table
+    this.blockPulseTable = new dynamodb.Table(this, 'BlockPulseTable', {
+      tableName: `BlockPulse-${envName}-Table`,
+      partitionKey: {
+        name: 'PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'SK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST, // On-demand capacity
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecovery: true, // Enable point-in-time recovery
+      encryption: dynamodb.TableEncryption.DEFAULT, // Use AWS owned CMK
+      timeToLiveAttribute: 'TTL', // TTL attribute for expiring items
+    });
+
+    // Add Global Secondary Indexes for common access patterns
+    
+    // GSI1: For community lookups by name and type
+    this.blockPulseTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: {
+        name: 'GSI1PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'GSI1SK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI2: For user lookups by email
+    this.blockPulseTable.addGlobalSecondaryIndex({
+      indexName: 'GSI2',
+      partitionKey: {
+        name: 'GSI2PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'GSI2SK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI3: For time-based queries (announcements, messages)
+    this.blockPulseTable.addGlobalSecondaryIndex({
+      indexName: 'GSI3',
+      partitionKey: {
+        name: 'GSI3PK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'GSI3SK',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // Grant the authenticated role access to the DynamoDB table
+    this.blockPulseTable.grantReadWriteData(this.authenticatedRole);
+    
     // Output the stack name for reference
     new cdk.CfnOutput(this, 'StackName', {
       value: this.stackName,
@@ -195,6 +261,20 @@ export class BlockPulseStack extends cdk.Stack {
       value: `${domainPrefix}.auth.${this.region}.amazoncognito.com`,
       description: 'The domain of the Cognito User Pool',
       exportName: `${this.stackName}-UserPoolDomain`,
+    });
+
+    // Output DynamoDB Table Name
+    new cdk.CfnOutput(this, 'TableName', {
+      value: this.blockPulseTable.tableName,
+      description: 'The name of the DynamoDB table',
+      exportName: `${this.stackName}-TableName`,
+    });
+
+    // Output DynamoDB Table ARN
+    new cdk.CfnOutput(this, 'TableArn', {
+      value: this.blockPulseTable.tableArn,
+      description: 'The ARN of the DynamoDB table',
+      exportName: `${this.stackName}-TableArn`,
     });
   }
 }
