@@ -7,6 +7,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
 
 export class BlockPulseStack extends cdk.Stack {
   // Public properties to expose resources to other parts of the application
@@ -17,6 +18,8 @@ export class BlockPulseStack extends cdk.Stack {
   public readonly unauthenticatedRole: iam.Role;
   public readonly blockPulseTable: dynamodb.Table;
   public readonly blockPulseBucket: s3.Bucket;
+  public readonly restApi: apigateway.RestApi;
+  public readonly lambdaAuthorizer: apigateway.TokenAuthorizer;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -231,8 +234,14 @@ export class BlockPulseStack extends cdk.Stack {
     this.blockPulseTable.grantReadWriteData(this.authenticatedRole);
     
     // T6: S3 Bucket for storing user content and community assets
-    this.blockPulseBucket = new s3.Bucket(this, 'BlockPulseBucket', {
-      bucketName: `blockpulse-${envName}-${this.account}-${this.region}`,
+    // Create S3 bucket with a unique logical ID to avoid conflicts
+    const blockPulseBucketLogicalId = `BlockPulseBucket${envName.charAt(0).toUpperCase() + envName.slice(1)}`;
+    
+    // Create the S3 bucket directly without try-catch
+    // Use a completely different bucket name pattern to avoid conflicts
+    this.blockPulseBucket = new s3.Bucket(this, blockPulseBucketLogicalId, {
+      // Using a unique name with timestamp to ensure uniqueness
+      bucketName: `bp-${envName}-${Date.now().toString().substring(0, 10)}-${this.region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access
       encryption: s3.BucketEncryption.S3_MANAGED, // Use S3 managed encryption
       enforceSSL: true, // Enforce SSL for all requests
@@ -333,6 +342,292 @@ export class BlockPulseStack extends cdk.Stack {
       value: this.blockPulseBucket.bucketArn,
       description: 'The ARN of the S3 bucket',
       exportName: `${this.stackName}-BucketArn`,
+    });
+
+    // T7: REST API Gateway
+    this.restApi = new apigateway.RestApi(this, 'BlockPulseApi', {
+      restApiName: `BlockPulse-${envName}-API`,
+      description: 'API for BlockPulse application',
+      defaultCorsPreflightOptions: {
+        allowOrigins: isProd 
+          ? ['https://blockpulse.anviinnovate.com'] 
+          : ['http://localhost:3000'],
+        allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+        ],
+        allowCredentials: true,
+      },
+      deployOptions: {
+        stageName: 'v1',
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: !isProd,
+      },
+    });
+
+    // Create Lambda authorizer
+    const authorizerLambda = new lambda.Function(this, 'LambdaAuthorizer', {
+      functionName: `BlockPulse-${envName}-Authorizer`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/lambda-authorizer.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    // Create Lambda authorizer for API Gateway
+    this.lambdaAuthorizer = new apigateway.TokenAuthorizer(this, 'ApiAuthorizer', {
+      handler: authorizerLambda,
+      identitySource: 'method.request.header.Authorization',
+      resultsCacheTtl: cdk.Duration.seconds(300), // Cache authorizer results for 5 minutes
+    });
+
+    // Create auth API resource
+    const authApi = this.restApi.root.addResource('auth');
+
+    // Create Lambda functions for authentication endpoints
+    
+    // Register Lambda
+    const registerLambda = new lambda.Function(this, 'RegisterLambda', {
+      functionName: `BlockPulse-${envName}-Register`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/register.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the register Lambda
+    this.blockPulseTable.grantWriteData(registerLambda);
+    registerLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:SignUp'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Confirm Registration Lambda
+    const confirmRegistrationLambda = new lambda.Function(this, 'ConfirmRegistrationLambda', {
+      functionName: `BlockPulse-${envName}-ConfirmRegistration`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/confirm-registration.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the confirm registration Lambda
+    this.blockPulseTable.grantReadWriteData(confirmRegistrationLambda);
+    confirmRegistrationLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:ConfirmSignUp'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Login Lambda
+    const loginLambda = new lambda.Function(this, 'LoginLambda', {
+      functionName: `BlockPulse-${envName}-Login`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/login.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the login Lambda
+    this.blockPulseTable.grantReadData(loginLambda);
+    loginLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:InitiateAuth'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Forgot Password Lambda
+    const forgotPasswordLambda = new lambda.Function(this, 'ForgotPasswordLambda', {
+      functionName: `BlockPulse-${envName}-ForgotPassword`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/forgot-password.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the forgot password Lambda
+    forgotPasswordLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:ForgotPassword'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Confirm Forgot Password Lambda
+    const confirmForgotPasswordLambda = new lambda.Function(this, 'ConfirmForgotPasswordLambda', {
+      functionName: `BlockPulse-${envName}-ConfirmForgotPassword`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/confirm-forgot-password.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the confirm forgot password Lambda
+    confirmForgotPasswordLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:ConfirmForgotPassword'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Refresh Token Lambda
+    const refreshTokenLambda = new lambda.Function(this, 'RefreshTokenLambda', {
+      functionName: `BlockPulse-${envName}-RefreshToken`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/refresh-token.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the refresh token Lambda
+    refreshTokenLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:InitiateAuth'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Logout Lambda
+    const logoutLambda = new lambda.Function(this, 'LogoutLambda', {
+      functionName: `BlockPulse-${envName}-Logout`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/logout.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the logout Lambda
+    logoutLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:GlobalSignOut'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Resend Confirmation Lambda
+    const resendConfirmationLambda = new lambda.Function(this, 'ResendConfirmationLambda', {
+      functionName: `BlockPulse-${envName}-ResendConfirmation`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/resend-confirmation.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the resend confirmation Lambda
+    resendConfirmationLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:ResendConfirmationCode'],
+      resources: [this.userPool.userPoolArn],
+    }));
+
+    // Get User Lambda
+    const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
+      functionName: `BlockPulse-${envName}-GetUser`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/get-user.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the get user Lambda
+    this.blockPulseTable.grantReadData(getUserLambda);
+    getUserLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['cognito-idp:GetUser'],
+      resources: ['*'], // GetUser operates on the access token, not the user pool
+    }));
+
+    // Create API endpoints for authentication
+    
+    // Register endpoint
+    const registerResource = authApi.addResource('register');
+    registerResource.addMethod('POST', new apigateway.LambdaIntegration(registerLambda));
+
+    // Confirm registration endpoint
+    const confirmResource = authApi.addResource('confirm');
+    confirmResource.addMethod('POST', new apigateway.LambdaIntegration(confirmRegistrationLambda));
+
+    // Login endpoint
+    const loginResource = authApi.addResource('login');
+    loginResource.addMethod('POST', new apigateway.LambdaIntegration(loginLambda));
+
+    // Forgot password endpoint
+    const forgotPasswordResource = authApi.addResource('forgot-password');
+    forgotPasswordResource.addMethod('POST', new apigateway.LambdaIntegration(forgotPasswordLambda));
+
+    // Confirm forgot password endpoint
+    const confirmForgotPasswordResource = authApi.addResource('confirm-forgot-password');
+    confirmForgotPasswordResource.addMethod('POST', new apigateway.LambdaIntegration(confirmForgotPasswordLambda));
+
+    // Refresh token endpoint
+    const refreshTokenResource = authApi.addResource('refresh-token');
+    refreshTokenResource.addMethod('POST', new apigateway.LambdaIntegration(refreshTokenLambda));
+
+    // Logout endpoint (requires authorization)
+    const logoutResource = authApi.addResource('logout');
+    logoutResource.addMethod('POST', new apigateway.LambdaIntegration(logoutLambda), {
+      authorizer: this.lambdaAuthorizer,
+    });
+
+    // Resend confirmation endpoint
+    const resendConfirmationResource = authApi.addResource('resend-confirmation');
+    resendConfirmationResource.addMethod('POST', new apigateway.LambdaIntegration(resendConfirmationLambda));
+
+    // Get user endpoint (requires authorization)
+    const userResource = authApi.addResource('user');
+    userResource.addMethod('GET', new apigateway.LambdaIntegration(getUserLambda), {
+      authorizer: this.lambdaAuthorizer,
+    });
+
+    // Output API Gateway URL
+    new cdk.CfnOutput(this, 'ApiUrl', {
+      value: this.restApi.url,
+      description: 'The URL of the API Gateway',
+      exportName: `${this.stackName}-ApiUrl`,
     });
   }
 }
