@@ -16,6 +16,7 @@ export class BlockPulseStack extends cdk.Stack {
   public readonly authenticatedRole: iam.Role;
   public readonly unauthenticatedRole: iam.Role;
   public readonly blockPulseTable: dynamodb.Table;
+  public readonly blockPulseBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -229,6 +230,49 @@ export class BlockPulseStack extends cdk.Stack {
     // Grant the authenticated role access to the DynamoDB table
     this.blockPulseTable.grantReadWriteData(this.authenticatedRole);
     
+    // T6: S3 Bucket for storing user content and community assets
+    this.blockPulseBucket = new s3.Bucket(this, 'BlockPulseBucket', {
+      bucketName: `blockpulse-${envName}-${this.account}-${this.region}`,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access
+      encryption: s3.BucketEncryption.S3_MANAGED, // Use S3 managed encryption
+      enforceSSL: true, // Enforce SSL for all requests
+      versioned: isProd, // Enable versioning in production
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: !isProd, // Auto delete objects in non-prod environments
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+          ],
+          allowedOrigins: isProd 
+            ? ['https://blockpulse.anviinnovate.com'] 
+            : ['http://localhost:3000'],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
+      lifecycleRules: [
+        {
+          // Move infrequently accessed objects to Intelligent-Tiering after 30 days
+          transitions: [
+            {
+              storageClass: s3.StorageClass.INTELLIGENT_TIERING,
+              transitionAfter: cdk.Duration.days(30),
+            },
+          ],
+          // Expire temporary objects after 90 days (only in non-prod)
+          expiration: !isProd ? cdk.Duration.days(90) : undefined,
+          prefix: 'temp/',
+          enabled: true,
+        },
+      ],
+    });
+    
+    // Grant the authenticated role access to the S3 bucket
+    this.blockPulseBucket.grantReadWrite(this.authenticatedRole);
+    
     // Output the stack name for reference
     new cdk.CfnOutput(this, 'StackName', {
       value: this.stackName,
@@ -275,6 +319,20 @@ export class BlockPulseStack extends cdk.Stack {
       value: this.blockPulseTable.tableArn,
       description: 'The ARN of the DynamoDB table',
       exportName: `${this.stackName}-TableArn`,
+    });
+    
+    // Output S3 Bucket Name
+    new cdk.CfnOutput(this, 'BucketName', {
+      value: this.blockPulseBucket.bucketName,
+      description: 'The name of the S3 bucket',
+      exportName: `${this.stackName}-BucketName`,
+    });
+    
+    // Output S3 Bucket ARN
+    new cdk.CfnOutput(this, 'BucketArn', {
+      value: this.blockPulseBucket.bucketArn,
+      description: 'The ARN of the S3 bucket',
+      exportName: `${this.stackName}-BucketArn`,
     });
   }
 }
