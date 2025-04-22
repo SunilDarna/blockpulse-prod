@@ -1,0 +1,4 @@
+{
+  "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+  "assetBucketName": "blockpulse-cdk-bootstrap"
+}
