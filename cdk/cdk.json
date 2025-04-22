@@ -35,6 +35,6 @@
       "aws",
       "aws-cn"
     ],
-    "toolkitBucketName": "blockpulse-cdk-assets-850880318574-us-east-1"
+    "toolkitBucketName": "blockpulse-cdk-bootstrap"
   }
 }
