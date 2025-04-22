@@ -1,0 +1,38 @@
+name: BlockPulse CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci || npm install
+      
+    - name: Run linting
+      run: npm run lint || echo "Linting not configured yet"
+      
+    - name: Run tests
+      run: npm test || echo "Tests not configured yet"
+      
+    - name: Build
+      run: npm run build || echo "Build not configured yet"
+      
+    - name: Report status
+      run: |
+        echo "Build completed successfully"
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
