@@ -1,0 +1,26 @@
+{
+  "name": "blockpulse",
+  "version": "0.1.0",
+  "description": "A cloud-native community management application",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "lint": "echo \"Error: no linting configured\" && exit 0",
+    "build": "echo \"Error: no build configured\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SunilDarna/blockpulse-prod.git"
+  },
+  "keywords": [
+    "community",
+    "aws",
+    "serverless"
+  ],
+  "author": "Anvi Innovate",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/SunilDarna/blockpulse-prod/issues"
+  },
+  "homepage": "https://github.com/SunilDarna/blockpulse-prod#readme"
+}
