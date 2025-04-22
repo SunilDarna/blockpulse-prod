@@ -34,7 +34,6 @@
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"
-    ],
-    "toolkitBucketName": "blockpulse-cdk-bootstrap"
+    ]
   }
 }
