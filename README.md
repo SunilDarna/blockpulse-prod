@@ -1,5 +1,7 @@
 # BlockPulse
 
+[![BlockPulse CI](https://github.com/SunilDarna/blockpulse-prod/actions/workflows/ci.yml/badge.svg)](https://github.com/SunilDarna/blockpulse-prod/actions/workflows/ci.yml)
+
 A cloud-native community management application built on AWS.
 
 ## Overview
