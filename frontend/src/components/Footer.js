@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Container,
@@ -10,6 +11,8 @@ import {
 } from '@mui/material';
 
 const Footer = () => {
+  const { isAuthenticated } = useSelector((state) => state.auth);
+
   return (
     <Box
       component="footer"
@@ -38,12 +41,28 @@ const Footer = () => {
             <Link component={RouterLink} to="/" color="inherit" display="block" sx={{ mb: 1 }}>
               Home
             </Link>
-            <Link component={RouterLink} to="/login" color="inherit" display="block" sx={{ mb: 1 }}>
-              Sign In
-            </Link>
-            <Link component={RouterLink} to="/register" color="inherit" display="block" sx={{ mb: 1 }}>
-              Create Account
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link component={RouterLink} to="/communities" color="inherit" display="block" sx={{ mb: 1 }}>
+                  My Communities
+                </Link>
+                <Link component={RouterLink} to="/messages" color="inherit" display="block" sx={{ mb: 1 }}>
+                  Messages
+                </Link>
+                <Link component={RouterLink} to="/announcements" color="inherit" display="block" sx={{ mb: 1 }}>
+                  Announcements
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link component={RouterLink} to="/login" color="inherit" display="block" sx={{ mb: 1 }}>
+                  Sign In
+                </Link>
+                <Link component={RouterLink} to="/register" color="inherit" display="block" sx={{ mb: 1 }}>
+                  Create Account
+                </Link>
+              </>
+            )}
           </Grid>
           
           <Grid item xs={12} sm={4}>

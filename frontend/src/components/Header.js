@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Link as RouterLink } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -11,17 +11,28 @@ import {
   Container,
   Button,
   MenuItem,
+  Avatar,
+  Tooltip,
+  Divider,
   useTheme,
   useMediaQuery
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import AddIcon from '@mui/icons-material/Add';
+import GroupIcon from '@mui/icons-material/Group';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { Auth } from 'aws-amplify';
+import { clearUser } from '../features/auth/authSlice';
 
 const Header = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   
   const [anchorElNav, setAnchorElNav] = useState(null);
+  const [anchorElUser, setAnchorElUser] = useState(null);
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);
@@ -30,12 +41,31 @@ const Header = () => {
   const handleCloseNavMenu = () => {
     setAnchorElNav(null);
   };
+  
+  const handleOpenUserMenu = (event) => {
+    setAnchorElUser(event.currentTarget);
+  };
+
+  const handleCloseUserMenu = () => {
+    setAnchorElUser(null);
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await Auth.signOut();
+      dispatch(clearUser());
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    }
+  };
 
   const pages = isAuthenticated 
     ? [
         { title: 'Dashboard', path: '/dashboard' },
-        { title: 'Communities', path: '/communities' },
-        { title: 'Messages', path: '/messages' }
+        { title: 'My Communities', path: '/communities' },
+        { title: 'Messages', path: '/messages' },
+        { title: 'Announcements', path: '/announcements' }
       ]
     : [
         { title: 'Features', path: '/#features' },
@@ -142,14 +172,80 @@ const Header = () => {
           {/* Auth buttons */}
           <Box sx={{ flexGrow: 0 }}>
             {isAuthenticated ? (
-              <Button
-                component={RouterLink}
-                to="/dashboard"
-                variant="contained"
-                sx={{ ml: 2 }}
-              >
-                Dashboard
-              </Button>
+              <>
+                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    component={RouterLink}
+                    to="/create-community"
+                  >
+                    Create Community
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<GroupIcon />}
+                    component={RouterLink}
+                    to="/join-community"
+                  >
+                    Join Community
+                  </Button>
+                  <Tooltip title="Account settings">
+                    <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                      <Avatar 
+                        alt={user?.firstName || 'User'} 
+                        src="/static/images/avatar/default.jpg"
+                        sx={{ bgcolor: 'primary.main' }}
+                      >
+                        {user?.firstName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                      </Avatar>
+                    </IconButton>
+                  </Tooltip>
+                  <Menu
+                    sx={{ mt: '45px' }}
+                    id="menu-appbar-user"
+                    anchorEl={anchorElUser}
+                    anchorOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    keepMounted
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    open={Boolean(anchorElUser)}
+                    onClose={handleCloseUserMenu}
+                  >
+                    <MenuItem component={RouterLink} to="/profile">
+                      <Typography textAlign="center">Profile</Typography>
+                    </MenuItem>
+                    <MenuItem component={RouterLink} to="/settings">
+                      <Typography textAlign="center">Settings</Typography>
+                    </MenuItem>
+                    <Divider />
+                    <MenuItem onClick={handleLogout}>
+                      <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
+                      <Typography textAlign="center">Logout</Typography>
+                    </MenuItem>
+                  </Menu>
+                </Box>
+                
+                {/* Mobile view */}
+                <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+                  <IconButton onClick={handleOpenUserMenu}>
+                    <Avatar 
+                      alt={user?.firstName || 'User'} 
+                      src="/static/images/avatar/default.jpg"
+                      sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
+                    >
+                      {user?.firstName?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                    </Avatar>
+                  </IconButton>
+                </Box>
+              </>
             ) : (
               <>
                 <Button
