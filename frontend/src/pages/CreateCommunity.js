@@ -64,15 +64,20 @@ const CreateCommunity = () => {
         tags: tagsArray
       };
       
+      console.log('Submitting community creation with payload:', payload);
+      
       // Dispatch the createCommunity action
       const resultAction = await dispatch(createCommunity(payload));
+      console.log('Result action:', resultAction);
       
       if (createCommunity.fulfilled.match(resultAction)) {
+        console.log('Community created successfully:', resultAction.payload);
         // Navigate to the community page after a short delay
         setTimeout(() => {
           navigate(`/communities/${resultAction.payload.communityId}`);
         }, 2000);
       } else {
+        console.error('Failed to create community:', resultAction);
         setError(resultAction.payload || 'Failed to create community. Please try again.');
       }
       

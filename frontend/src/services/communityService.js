@@ -15,12 +15,18 @@ export const communityService = {
    */
   createCommunity: async (communityData) => {
     try {
+      console.log('Creating community with data:', communityData);
       const response = await API.post('communityApi', '/communities', {
-        body: communityData
+        body: communityData,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      console.log('Community created successfully:', response);
       return response;
     } catch (error) {
       console.error('Error creating community:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },

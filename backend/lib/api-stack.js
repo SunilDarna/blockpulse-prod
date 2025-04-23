@@ -103,8 +103,47 @@ class ApiStack extends Stack {
     // Create API resources and methods
     const communitiesResource = api.root.addResource('communities');
     
+    // Add CORS options to communities resource
+    communitiesResource.addMethod('OPTIONS', new LambdaIntegration(createCommunityFunction), {
+      methodResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Headers': true,
+            'method.response.header.Access-Control-Allow-Methods': true,
+            'method.response.header.Access-Control-Allow-Origin': true,
+            'method.response.header.Access-Control-Allow-Credentials': true
+          }
+        }
+      ]
+    });
+    
     // POST /communities - Create a community
-    communitiesResource.addMethod('POST', new LambdaIntegration(createCommunityFunction));
+    communitiesResource.addMethod('POST', new LambdaIntegration(createCommunityFunction), {
+      methodResponses: [
+        {
+          statusCode: '201',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+            'method.response.header.Access-Control-Allow-Credentials': true
+          }
+        },
+        {
+          statusCode: '400',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+            'method.response.header.Access-Control-Allow-Credentials': true
+          }
+        },
+        {
+          statusCode: '500',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+            'method.response.header.Access-Control-Allow-Credentials': true
+          }
+        }
+      ]
+    });
     
     // GET /communities/user - List user's communities
     const userCommunitiesResource = communitiesResource.addResource('user');

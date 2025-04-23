@@ -7,15 +7,21 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE;
  * Lambda function to create a new community
  */
 exports.handler = async (event) => {
+  console.log('Event received:', JSON.stringify(event, null, 2));
+  
   try {
     // Parse request body
     const requestBody = JSON.parse(event.body);
+    console.log('Request body:', requestBody);
+    
     const { name, description, joinType, tags } = requestBody;
     
     // Get user information from the event
     const userId = event.requestContext.authorizer.claims.sub;
     const userEmail = event.requestContext.authorizer.claims.email;
     const userName = event.requestContext.authorizer.claims.name || userEmail.split('@')[0];
+    
+    console.log('User info:', { userId, userEmail, userName });
     
     // Validate required fields
     if (!name || !description || !joinType) {
@@ -78,6 +84,12 @@ exports.handler = async (event) => {
       type: 'user_community'
     };
     
+    console.log('Items to write:', {
+      communityItem,
+      membershipItem,
+      userCommunityItem
+    });
+    
     // Write all items to DynamoDB in a transaction
     await dynamoDB.transactWrite({
       TransactItems: [
@@ -87,12 +99,15 @@ exports.handler = async (event) => {
       ]
     }).promise();
     
+    console.log('Community created successfully with ID:', communityId);
+    
     // Return success response
     return {
       statusCode: 201,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         message: 'Community created successfully',
@@ -111,6 +126,7 @@ exports.handler = async (event) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': true,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ 
         message: 'Failed to create community',

@@ -6,9 +6,11 @@ export const createCommunity = createAsyncThunk(
   'community/createCommunity',
   async (communityData, { rejectWithValue }) => {
     try {
+      console.log('Creating community with data in thunk:', communityData);
       const response = await communityService.createCommunity(communityData);
       return response;
     } catch (error) {
+      console.error('Error in createCommunity thunk:', error);
       return rejectWithValue(error.message || 'Failed to create community');
     }
   }

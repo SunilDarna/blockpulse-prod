@@ -21,12 +21,18 @@ Amplify.configure({
       {
         name: 'api',
         endpoint: config.apiGateway.URL,
-        region: config.apiGateway.REGION
+        region: config.apiGateway.REGION,
+        custom_header: async () => {
+          return { 'Content-Type': 'application/json' };
+        }
       },
       {
         name: 'communityApi',
         endpoint: config.apiGateway.URL,
-        region: config.apiGateway.REGION
+        region: config.apiGateway.REGION,
+        custom_header: async () => {
+          return { 'Content-Type': 'application/json' };
+        }
       }
     ]
   }
