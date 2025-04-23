@@ -22,6 +22,11 @@ Amplify.configure({
         name: 'api',
         endpoint: config.apiGateway.URL,
         region: config.apiGateway.REGION
+      },
+      {
+        name: 'communityApi',
+        endpoint: config.apiGateway.URL,
+        region: config.apiGateway.REGION
       }
     ]
   }

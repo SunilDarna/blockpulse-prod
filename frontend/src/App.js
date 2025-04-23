@@ -12,6 +12,7 @@ import ConfirmRegistration from './pages/auth/ConfirmRegistration';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
+import CreateCommunity from './pages/CreateCommunity';
 import NotFound from './pages/NotFound';
 
 // Components
@@ -112,6 +113,11 @@ function App() {
             <Route path="dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="create-community" element={
+              <ProtectedRoute>
+                <CreateCommunity />
               </ProtectedRoute>
             } />
           </Route>
