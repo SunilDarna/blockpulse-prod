@@ -52,7 +52,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // Register user in Cognito
     const signUpParams = {
       ClientId: USER_POOL_CLIENT_ID,
-      Username: email,
+      Username: username, // Use generated username instead of email
       Password: password,
       UserAttributes: [
         {
@@ -100,7 +100,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return successResponse({
       message: 'User registration successful. Please check your email for verification code.',
-      username: email,
+      username: username, // Return the generated username instead of email
       userSub: signUpResult.UserSub,
     });
   } catch (error: any) {

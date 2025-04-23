@@ -8,7 +8,9 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy:prod": "cdk deploy BlockPulseProdStack --require-approval never",
+    "deploy:dev": "cdk deploy BlockPulseDevStack --require-approval never"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

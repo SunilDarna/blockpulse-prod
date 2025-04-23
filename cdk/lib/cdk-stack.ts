@@ -7,6 +7,8 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -628,7 +630,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Output API Gateway URL
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: this.restApi.url,
+      value: `${this.restApi.url}v1/`,
       description: 'The URL of the API Gateway',
       exportName: `${this.stackName}-ApiUrl`,
     });
@@ -647,7 +649,35 @@ export class BlockPulseStack extends cdk.Stack {
       timeToLiveAttribute: 'ttl', // TTL attribute for expiring connections
     });
 
-    // Add GSI for community-based queries
+    // Create a cleanup Lambda to remove unconfirmed users
+    const cleanupUnconfirmedUsersLambda = new lambda.Function(this, 'CleanupUnconfirmedUsersLambda', {
+      functionName: `BlockPulse-${envName}-CleanupUnconfirmedUsers`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'dist/auth/cleanup-unconfirmed-users.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
+      environment: {
+        USER_POOL_ID: this.userPool.userPoolId,
+        TABLE_NAME: this.blockPulseTable.tableName,
+      },
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 256,
+    });
+    
+    // Grant permissions to the cleanup Lambda
+    cleanupUnconfirmedUsersLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'cognito-idp:ListUsers',
+        'cognito-idp:AdminDeleteUser'
+      ],
+      resources: [this.userPool.userPoolArn],
+    }));
+    this.blockPulseTable.grantReadWriteData(cleanupUnconfirmedUsersLambda);
+    
+    // Schedule the cleanup Lambda to run daily
+    new events.Rule(this, 'CleanupUnconfirmedUsersRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '0' }), // Run at midnight every day
+      targets: [new targets.LambdaFunction(cleanupUnconfirmedUsersLambda)],
+    });
     this.connectionsTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
       partitionKey: {
