@@ -1,0 +1,9 @@
+{
+  "name": "blockpulse-lambda",
+  "version": "1.0.0",
+  "description": "Lambda functions for BlockPulse application",
+  "dependencies": {
+    "aws-sdk": "^2.1354.0",
+    "uuid": "^9.0.0"
+  }
+}
