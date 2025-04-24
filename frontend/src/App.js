@@ -13,6 +13,9 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import CreateCommunity from './pages/CreateCommunity';
+import Communities from './pages/Communities';
+import CommunityDetail from './pages/CommunityDetail';
+import CommunityMembers from './pages/CommunityMembers';
 import NotFound from './pages/NotFound';
 
 // Components
@@ -118,6 +121,21 @@ function App() {
             <Route path="create-community" element={
               <ProtectedRoute>
                 <CreateCommunity />
+              </ProtectedRoute>
+            } />
+            <Route path="communities" element={
+              <ProtectedRoute>
+                <Communities />
+              </ProtectedRoute>
+            } />
+            <Route path="communities/:communityId" element={
+              <ProtectedRoute>
+                <CommunityDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="communities/:communityId/members" element={
+              <ProtectedRoute>
+                <CommunityMembers />
               </ProtectedRoute>
             } />
           </Route>
