@@ -1,4 +1,4 @@
-import { API } from 'aws-amplify';
+import { API, Auth } from 'aws-amplify';
 
 /**
  * Service for community-related API calls
@@ -16,10 +16,16 @@ export const communityService = {
   createCommunity: async (communityData) => {
     try {
       console.log('Creating community with data:', communityData);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
       const response = await API.post('communityApi', '/communities', {
         body: communityData,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         }
       });
       console.log('Community created successfully:', response);
@@ -37,7 +43,15 @@ export const communityService = {
    */
   getUserCommunities: async () => {
     try {
-      const response = await API.get('communityApi', '/communities/user');
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.get('communityApi', '/communities/user', {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
       return response;
     } catch (error) {
       console.error('Error fetching user communities:', error);
@@ -52,7 +66,15 @@ export const communityService = {
    */
   getCommunityById: async (communityId) => {
     try {
-      const response = await API.get('communityApi', `/communities/${communityId}`);
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.get('communityApi', `/communities/${communityId}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
       return response;
     } catch (error) {
       console.error(`Error fetching community ${communityId}:`, error);
