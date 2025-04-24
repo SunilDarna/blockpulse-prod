@@ -22,6 +22,7 @@ import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './components/LandingPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Redux actions
 import { setUser, clearUser } from './features/auth/authSlice';
@@ -104,44 +105,46 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
-          <Route path="/confirm-registration" element={<ConfirmRegistration />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          
-          <Route path="/" element={<Layout />}>
-            <Route index element={isAuthenticated ? <Navigate to="/dashboard" /> : <LandingPage />} />
-            <Route path="dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="create-community" element={
-              <ProtectedRoute>
-                <CreateCommunity />
-              </ProtectedRoute>
-            } />
-            <Route path="communities" element={
-              <ProtectedRoute>
-                <Communities />
-              </ProtectedRoute>
-            } />
-            <Route path="communities/:communityId" element={
-              <ProtectedRoute>
-                <CommunityDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="communities/:communityId/members" element={
-              <ProtectedRoute>
-                <CommunityMembers />
-              </ProtectedRoute>
-            } />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+            <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
+            <Route path="/confirm-registration" element={<ConfirmRegistration />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            <Route path="/" element={<Layout />}>
+              <Route index element={isAuthenticated ? <Navigate to="/dashboard" /> : <LandingPage />} />
+              <Route path="dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="create-community" element={
+                <ProtectedRoute>
+                  <CreateCommunity />
+                </ProtectedRoute>
+              } />
+              <Route path="communities" element={
+                <ProtectedRoute>
+                  <Communities />
+                </ProtectedRoute>
+              } />
+              <Route path="communities/:communityId" element={
+                <ProtectedRoute>
+                  <CommunityDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="communities/:communityId/members" element={
+                <ProtectedRoute>
+                  <CommunityMembers />
+                </ProtectedRoute>
+              } />
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </Router>
     </ThemeProvider>
   );
