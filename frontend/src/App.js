@@ -140,6 +140,16 @@ function App() {
                   <CommunityMembers />
                 </ProtectedRoute>
               } />
+              <Route path="communities/:communityId/announcements" element={
+                <ProtectedRoute>
+                  <CommunityDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="communities/:communityId/chat" element={
+                <ProtectedRoute>
+                  <CommunityDetail />
+                </ProtectedRoute>
+              } />
             </Route>
             
             <Route path="*" element={<NotFound />} />

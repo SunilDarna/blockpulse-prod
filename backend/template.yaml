@@ -144,6 +144,54 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /communities/{communityId}/members
             Method: get
+            
+  CreateAnnouncementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: communities/
+      Handler: createAnnouncement.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /communities/{communityId}/announcements
+            Method: post
+            
+  GetAnnouncementsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: communities/
+      Handler: getAnnouncements.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /communities/{communityId}/announcements
+            Method: get
+            
+  ReactToAnnouncementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: communities/
+      Handler: reactToAnnouncement.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /communities/{communityId}/announcements/{announcementId}/reactions
+            Method: post
 
 Outputs:
   ApiEndpoint:

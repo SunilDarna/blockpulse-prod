@@ -20,9 +20,12 @@ export const fetchUserCommunities = createAsyncThunk(
   'community/fetchUserCommunities',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('Fetching user communities...');
       const response = await communityService.getUserCommunities();
+      console.log('User communities fetched successfully:', response);
       return response;
     } catch (error) {
+      console.error('Error fetching user communities in thunk:', error);
       return rejectWithValue(error.message || 'Failed to fetch communities');
     }
   }
@@ -32,10 +35,37 @@ export const fetchCommunityById = createAsyncThunk(
   'community/fetchCommunityById',
   async (communityId, { rejectWithValue }) => {
     try {
+      console.log(`Fetching community with ID: ${communityId}`);
       const response = await communityService.getCommunityById(communityId);
+      console.log('Community fetched successfully:', response);
       return response;
     } catch (error) {
+      console.error(`Error fetching community ${communityId} in thunk:`, error);
       return rejectWithValue(error.message || 'Failed to fetch community');
+    }
+  }
+);
+
+export const createAnnouncement = createAsyncThunk(
+  'community/createAnnouncement',
+  async ({ communityId, announcementData }, { rejectWithValue }) => {
+    try {
+      const response = await communityService.createAnnouncement(communityId, announcementData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to create announcement');
+    }
+  }
+);
+
+export const fetchCommunityAnnouncements = createAsyncThunk(
+  'community/fetchCommunityAnnouncements',
+  async (communityId, { rejectWithValue }) => {
+    try {
+      const response = await communityService.getCommunityAnnouncements(communityId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch announcements');
     }
   }
 );
@@ -43,9 +73,13 @@ export const fetchCommunityById = createAsyncThunk(
 const initialState = {
   communities: [],
   currentCommunity: null,
+  announcements: [],
   loading: false,
   error: null,
-  success: false
+  success: false,
+  announcementLoading: false,
+  announcementError: null,
+  announcementSuccess: false
 };
 
 export const communitySlice = createSlice({
@@ -58,7 +92,13 @@ export const communitySlice = createSlice({
     clearCommunitySuccess: (state) => {
       state.success = false;
     },
-    resetCommunityState: () => initialState
+    resetCommunityState: () => initialState,
+    clearAnnouncementError: (state) => {
+      state.announcementError = null;
+    },
+    clearAnnouncementSuccess: (state) => {
+      state.announcementSuccess = false;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -105,10 +145,46 @@ export const communitySlice = createSlice({
       .addCase(fetchCommunityById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      
+      // Create announcement
+      .addCase(createAnnouncement.pending, (state) => {
+        state.announcementLoading = true;
+        state.announcementError = null;
+        state.announcementSuccess = false;
+      })
+      .addCase(createAnnouncement.fulfilled, (state, action) => {
+        state.announcementLoading = false;
+        state.announcements.unshift(action.payload); // Add to beginning of array
+        state.announcementSuccess = true;
+      })
+      .addCase(createAnnouncement.rejected, (state, action) => {
+        state.announcementLoading = false;
+        state.announcementError = action.payload;
+      })
+      
+      // Fetch community announcements
+      .addCase(fetchCommunityAnnouncements.pending, (state) => {
+        state.announcementLoading = true;
+        state.announcementError = null;
+      })
+      .addCase(fetchCommunityAnnouncements.fulfilled, (state, action) => {
+        state.announcementLoading = false;
+        state.announcements = action.payload;
+      })
+      .addCase(fetchCommunityAnnouncements.rejected, (state, action) => {
+        state.announcementLoading = false;
+        state.announcementError = action.payload;
       });
   }
 });
 
-export const { clearCommunityError, clearCommunitySuccess, resetCommunityState } = communitySlice.actions;
+export const { 
+  clearCommunityError, 
+  clearCommunitySuccess, 
+  resetCommunityState,
+  clearAnnouncementError,
+  clearAnnouncementSuccess
+} = communitySlice.actions;
 
 export default communitySlice.reducer;

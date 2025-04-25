@@ -43,6 +43,7 @@ export const communityService = {
    */
   getUserCommunities: async () => {
     try {
+      console.log('Fetching user communities from API...');
       // Get the current user's JWT token
       const session = await Auth.currentSession();
       const idToken = session.getIdToken().getJwtToken();
@@ -52,9 +53,11 @@ export const communityService = {
           'Authorization': `Bearer ${idToken}`
         }
       });
+      console.log('User communities API response:', response);
       return response;
     } catch (error) {
       console.error('Error fetching user communities:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },
@@ -66,6 +69,7 @@ export const communityService = {
    */
   getCommunityById: async (communityId) => {
     try {
+      console.log(`Fetching community details for ID: ${communityId}`);
       // Get the current user's JWT token
       const session = await Auth.currentSession();
       const idToken = session.getIdToken().getJwtToken();
@@ -75,9 +79,68 @@ export const communityService = {
           'Authorization': `Bearer ${idToken}`
         }
       });
+      console.log('Community details fetched successfully:', response);
       return response;
     } catch (error) {
       console.error(`Error fetching community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  },
+  
+  /**
+   * Create a new announcement in a community
+   * @param {string} communityId - The community ID
+   * @param {Object} announcementData - The announcement data
+   * @returns {Promise<Object>} - The created announcement
+   */
+  createAnnouncement: async (communityId, announcementData) => {
+    try {
+      console.log(`Creating announcement in community ${communityId}:`, announcementData);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.post('communityApi', `/communities/${communityId}/announcements`, {
+        body: announcementData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Announcement created successfully:', response);
+      return response;
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  },
+  
+  /**
+   * Get all announcements for a community
+   * @param {string} communityId - The community ID
+   * @returns {Promise<Array<Object>>} - List of announcements
+   */
+  getCommunityAnnouncements: async (communityId) => {
+    try {
+      console.log(`Fetching announcements for community ${communityId}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.get('communityApi', `/communities/${communityId}/announcements`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Announcements fetched successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error fetching announcements for community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   }

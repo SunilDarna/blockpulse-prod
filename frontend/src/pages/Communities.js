@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -27,18 +27,36 @@ import { fetchUserCommunities } from '../features/community/communitySlice';
 
 const Communities = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { communities, loading, error } = useSelector((state) => state.community);
   const [searchTerm, setSearchTerm] = useState('');
+  const [localError, setLocalError] = useState(null);
   
   useEffect(() => {
-    dispatch(fetchUserCommunities());
+    const fetchCommunities = async () => {
+      try {
+        setLocalError(null);
+        await dispatch(fetchUserCommunities()).unwrap();
+      } catch (err) {
+        console.error('Failed to fetch communities:', err);
+        setLocalError(err || 'Failed to fetch communities. Please try again.');
+      }
+    };
+    
+    fetchCommunities();
   }, [dispatch]);
   
-  const filteredCommunities = communities.filter(community => 
-    community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (community.description && community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (community.tags && community.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
-  );
+  const filteredCommunities = communities && communities.length > 0 
+    ? communities.filter(community => 
+        community.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (community.description && community.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (community.tags && community.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
+      )
+    : [];
+    
+  const handleCommunityClick = (communityId) => {
+    navigate(`/communities/${communityId}`);
+  };
   
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -57,9 +75,9 @@ const Communities = () => {
         </Button>
       </Box>
       
-      {error && (
+      {(error || localError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+          {error || localError}
         </Alert>
       )}
       
@@ -88,7 +106,19 @@ const Communities = () => {
         <Grid container spacing={3}>
           {filteredCommunities.map((community) => (
             <Grid item xs={12} md={6} key={community.communityId}>
-              <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card 
+                variant="outlined" 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    boxShadow: 3
+                  }
+                }}
+                onClick={() => handleCommunityClick(community.communityId)}
+              >
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Typography variant="h5" component="h2" gutterBottom>
@@ -119,7 +149,7 @@ const Communities = () => {
                 
                 <Divider />
                 
-                <CardActions>
+                <CardActions onClick={(e) => e.stopPropagation()}>
                   <Button 
                     size="small" 
                     startIcon={<GroupIcon />}

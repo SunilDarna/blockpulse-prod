@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Container,
@@ -16,27 +16,56 @@ import {
   CardContent,
   CardActions,
   Tabs,
-  Tab
+  Tab,
+  TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
 import ChatIcon from '@mui/icons-material/Chat';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchCommunityById } from '../features/community/communitySlice';
+import SendIcon from '@mui/icons-material/Send';
+import CloseIcon from '@mui/icons-material/Close';
+import { fetchCommunityById, fetchCommunityAnnouncements, createAnnouncement } from '../features/community/communitySlice';
 
 const CommunityDetail = () => {
   const { communityId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const { currentCommunity, loading, error } = useSelector((state) => state.community);
+  const { currentCommunity, loading, error, announcements, announcementLoading, announcementError } = useSelector((state) => state.community);
   const [activeTab, setActiveTab] = useState(0);
   const [localError, setLocalError] = useState(null);
+  const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
+  const [announcementText, setAnnouncementText] = useState('');
+
+  // Determine which tab to show based on URL
+  useEffect(() => {
+    if (location.pathname.includes('/announcements')) {
+      setActiveTab(0);
+    } else if (location.pathname.includes('/chat')) {
+      setActiveTab(1);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const loadCommunity = async () => {
       try {
         setLocalError(null);
         await dispatch(fetchCommunityById(communityId)).unwrap();
+        
+        // Also fetch announcements
+        try {
+          await dispatch(fetchCommunityAnnouncements(communityId)).unwrap();
+        } catch (err) {
+          console.error('Failed to fetch announcements:', err);
+          // Don't set an error state here, as we still want to show the community
+        }
       } catch (err) {
         console.error('Failed to fetch community details:', err);
         setLocalError(err || 'Failed to fetch community details. Please try again.');
@@ -50,10 +79,44 @@ const CommunityDetail = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+    if (newValue === 0) {
+      navigate(`/communities/${communityId}/announcements`);
+    } else if (newValue === 1) {
+      navigate(`/communities/${communityId}/chat`);
+    }
   };
 
   const handleBack = () => {
     navigate('/communities');
+  };
+
+  const handleAnnouncementDialogOpen = () => {
+    setAnnouncementDialogOpen(true);
+  };
+
+  const handleAnnouncementDialogClose = () => {
+    setAnnouncementDialogOpen(false);
+    setAnnouncementText('');
+  };
+
+  const handleCreateAnnouncement = async () => {
+    if (!announcementText.trim()) return;
+
+    try {
+      await dispatch(createAnnouncement({
+        communityId,
+        announcementData: {
+          content: announcementText,
+          type: 'text'
+        }
+      })).unwrap();
+      
+      // Refresh announcements
+      dispatch(fetchCommunityAnnouncements(communityId));
+      handleAnnouncementDialogClose();
+    } catch (err) {
+      console.error('Failed to create announcement:', err);
+    }
   };
 
   if (loading) {
@@ -176,21 +239,54 @@ const CommunityDetail = () => {
       <Box sx={{ p: 2 }}>
         {activeTab === 0 && (
           <Paper elevation={1} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Announcements
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Announcements
+              </Typography>
+              {currentCommunity.userRole === 'admin' && (
+                <Button 
+                  variant="contained" 
+                  color="primary"
+                  onClick={handleAnnouncementDialogOpen}
+                >
+                  Create Announcement
+                </Button>
+              )}
+            </Box>
             <Divider sx={{ mb: 2 }} />
-            <Typography variant="body2" color="text.secondary">
-              No announcements yet. Check back later or create one if you're an admin.
-            </Typography>
-            {currentCommunity.userRole === 'admin' && (
-              <Button 
-                variant="contained" 
-                color="primary"
-                sx={{ mt: 2 }}
-              >
-                Create Announcement
-              </Button>
+            
+            {announcementLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : announcementError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {announcementError}
+              </Alert>
+            ) : announcements && announcements.length > 0 ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {announcements.map((announcement) => (
+                  <Card key={announcement.announcementId} variant="outlined" sx={{ mb: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {announcement.createdBy}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(announcement.createdAt).toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Typography variant="body1">
+                        {announcement.content}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No announcements yet. Check back later or create one if you're an admin.
+              </Typography>
             )}
           </Paper>
         )}
@@ -207,6 +303,56 @@ const CommunityDetail = () => {
           </Paper>
         )}
       </Box>
+
+      {/* Create Announcement Dialog */}
+      <Dialog 
+        open={announcementDialogOpen} 
+        onClose={handleAnnouncementDialogClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Create Announcement
+          <IconButton
+            aria-label="close"
+            onClick={handleAnnouncementDialogClose}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Create an announcement that will be visible to all community members.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            variant="outlined"
+            label="Announcement"
+            value={announcementText}
+            onChange={(e) => setAnnouncementText(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAnnouncementDialogClose}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={handleCreateAnnouncement}
+            endIcon={<SendIcon />}
+            disabled={!announcementText.trim()}
+          >
+            Post
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
