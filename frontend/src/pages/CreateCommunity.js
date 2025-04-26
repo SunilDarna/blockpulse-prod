@@ -74,7 +74,7 @@ const CreateCommunity = () => {
         console.log('Community created successfully:', resultAction.payload);
         // Navigate to the communities list page after a short delay
         setTimeout(() => {
-          navigate('/communities');
+          navigate(`/communities/${resultAction.payload.communityId}`);
         }, 2000);
       } else {
         console.error('Failed to create community:', resultAction);

@@ -29,7 +29,17 @@ export const communityService = {
         }
       });
       console.log('Community created successfully:', response);
-      return response;
+      
+      // Enhance the response with the full data needed for the UI
+      const enhancedResponse = {
+        ...response,
+        description: communityData.description,
+        tags: communityData.tags || [],
+        memberCount: 1, // Creator is the first member
+        userRole: 'admin' // Creator is always admin
+      };
+      
+      return enhancedResponse;
     } catch (error) {
       console.error('Error creating community:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -54,7 +64,9 @@ export const communityService = {
         }
       });
       console.log('User communities API response:', response);
-      return response;
+      
+      // Ensure we always return an array
+      return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching user communities:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -140,6 +152,32 @@ export const communityService = {
       return response;
     } catch (error) {
       console.error(`Error fetching announcements for community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  },
+  
+  /**
+   * Delete a community (admin only)
+   * @param {string} communityId - The community ID
+   * @returns {Promise<void>}
+   */
+  deleteCommunity: async (communityId) => {
+    try {
+      console.log(`Deleting community ${communityId}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      await API.del('communityApi', `/communities/${communityId}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Community deleted successfully');
+    } catch (error) {
+      console.error(`Error deleting community ${communityId}:`, error);
       console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }

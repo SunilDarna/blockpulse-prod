@@ -23,7 +23,9 @@ export const fetchUserCommunities = createAsyncThunk(
       console.log('Fetching user communities...');
       const response = await communityService.getUserCommunities();
       console.log('User communities fetched successfully:', response);
-      return response;
+      
+      // Ensure we have an array even if the API returns null or undefined
+      return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching user communities in thunk:', error);
       return rejectWithValue(error.message || 'Failed to fetch communities');
@@ -70,6 +72,20 @@ export const fetchCommunityAnnouncements = createAsyncThunk(
   }
 );
 
+export const deleteCommunity = createAsyncThunk(
+  'community/deleteCommunity',
+  async (communityId, { rejectWithValue }) => {
+    try {
+      console.log(`Deleting community with ID: ${communityId}`);
+      await communityService.deleteCommunity(communityId);
+      return communityId;
+    } catch (error) {
+      console.error(`Error deleting community ${communityId} in thunk:`, error);
+      return rejectWithValue(error.message || 'Failed to delete community');
+    }
+  }
+);
+
 const initialState = {
   communities: [],
   currentCommunity: null,
@@ -110,8 +126,14 @@ export const communitySlice = createSlice({
       })
       .addCase(createCommunity.fulfilled, (state, action) => {
         state.loading = false;
-        state.communities.push(action.payload);
-        state.currentCommunity = action.payload;
+        // Ensure we're adding the complete community object to the communities array
+        const newCommunity = {
+          ...action.payload,
+          userRole: 'admin', // Creator is always admin
+          status: 'active'
+        };
+        state.communities.push(newCommunity);
+        state.currentCommunity = newCommunity;
         state.success = true;
       })
       .addCase(createCommunity.rejected, (state, action) => {
@@ -175,6 +197,25 @@ export const communitySlice = createSlice({
       .addCase(fetchCommunityAnnouncements.rejected, (state, action) => {
         state.announcementLoading = false;
         state.announcementError = action.payload;
+      })
+      
+      // Delete community
+      .addCase(deleteCommunity.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteCommunity.fulfilled, (state, action) => {
+        state.loading = false;
+        state.communities = state.communities.filter(
+          community => community.communityId !== action.payload
+        );
+        if (state.currentCommunity && state.currentCommunity.communityId === action.payload) {
+          state.currentCommunity = null;
+        }
+      })
+      .addCase(deleteCommunity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   }
 });

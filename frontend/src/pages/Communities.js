@@ -55,6 +55,7 @@ const Communities = () => {
     : [];
     
   const handleCommunityClick = (communityId) => {
+    console.log(`Navigating to community: ${communityId}`);
     navigate(`/communities/${communityId}`);
   };
   
@@ -118,6 +119,7 @@ const Communities = () => {
                   }
                 }}
                 onClick={() => handleCommunityClick(community.communityId)}
+                component="div" // Ensure it's a div for better accessibility
               >
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>

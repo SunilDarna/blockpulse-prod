@@ -31,7 +31,12 @@ import AnnouncementIcon from '@mui/icons-material/Announcement';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
-import { fetchCommunityById, fetchCommunityAnnouncements, createAnnouncement } from '../features/community/communitySlice';
+import { 
+  fetchCommunityById, 
+  fetchCommunityAnnouncements, 
+  createAnnouncement,
+  deleteCommunity 
+} from '../features/community/communitySlice';
 
 const CommunityDetail = () => {
   const { communityId } = useParams();
@@ -43,6 +48,16 @@ const CommunityDetail = () => {
   const [localError, setLocalError] = useState(null);
   const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
   const [announcementText, setAnnouncementText] = useState('');
+  // Add like functionality for announcements
+  const [likedAnnouncements, setLikedAnnouncements] = useState({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const handleLikeAnnouncement = (announcementId) => {
+    setLikedAnnouncements(prev => ({
+      ...prev,
+      [announcementId]: !prev[announcementId]
+    }));
+  };
 
   // Determine which tab to show based on URL
   useEffect(() => {
@@ -57,6 +72,7 @@ const CommunityDetail = () => {
     const loadCommunity = async () => {
       try {
         setLocalError(null);
+        console.log(`Loading community details for ID: ${communityId}`);
         await dispatch(fetchCommunityById(communityId)).unwrap();
         
         // Also fetch announcements
@@ -90,6 +106,18 @@ const CommunityDetail = () => {
     navigate('/communities');
   };
 
+  const handleDeleteCommunity = async () => {
+    try {
+      await dispatch(deleteCommunity(communityId)).unwrap();
+      navigate('/communities');
+    } catch (err) {
+      console.error('Failed to delete community:', err);
+      setLocalError(err || 'Failed to delete community. Please try again.');
+    } finally {
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const handleAnnouncementDialogOpen = () => {
     setAnnouncementDialogOpen(true);
   };
@@ -103,12 +131,16 @@ const CommunityDetail = () => {
     if (!announcementText.trim()) return;
 
     try {
+      const announcementData = {
+        content: announcementText,
+        type: 'text'
+      };
+      
+      console.log(`Creating announcement in community ${communityId}:`, announcementData);
+      
       await dispatch(createAnnouncement({
         communityId,
-        announcementData: {
-          content: announcementText,
-          type: 'text'
-        }
+        announcementData
       })).unwrap();
       
       // Refresh announcements
@@ -218,6 +250,15 @@ const CommunityDetail = () => {
                 >
                   View Members
                 </Button>
+                {currentCommunity.userRole === 'admin' && (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    Delete Community
+                  </Button>
+                )}
               </CardActions>
             </Card>
           </Grid>
@@ -279,6 +320,18 @@ const CommunityDetail = () => {
                       <Typography variant="body1">
                         {announcement.content}
                       </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                        <Button 
+                          size="small" 
+                          color={likedAnnouncements[announcement.announcementId] ? "primary" : "default"}
+                          onClick={() => handleLikeAnnouncement(announcement.announcementId)}
+                          startIcon={likedAnnouncements[announcement.announcementId] ? 
+                            <span role="img" aria-label="liked">❤️</span> : 
+                            <span role="img" aria-label="not liked">🤍</span>}
+                        >
+                          {likedAnnouncements[announcement.announcementId] ? 'Liked' : 'Like'}
+                        </Button>
+                      </Box>
                     </CardContent>
                   </Card>
                 ))}
@@ -350,6 +403,30 @@ const CommunityDetail = () => {
             disabled={!announcementText.trim()}
           >
             Post
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Community Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Delete Community</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this community? This action cannot be undone.
+            All community data, including announcements and member information, will be permanently deleted.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteCommunity} 
+            color="error" 
+            variant="contained"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
