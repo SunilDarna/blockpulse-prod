@@ -65,8 +65,19 @@ export const communityService = {
       });
       console.log('User communities API response:', response);
       
-      // Ensure we always return an array
-      return Array.isArray(response) ? response : [];
+      // Ensure we always return an array with complete data
+      if (Array.isArray(response)) {
+        // Make sure each community has the required fields
+        return response.map(community => ({
+          ...community,
+          // Ensure these fields exist with defaults if missing
+          description: community.description || '',
+          tags: community.tags || [],
+          memberCount: community.memberCount || 1,
+          userRole: community.userRole || 'member'
+        }));
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching user communities:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));

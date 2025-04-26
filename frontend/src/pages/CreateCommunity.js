@@ -72,10 +72,8 @@ const CreateCommunity = () => {
       
       if (createCommunity.fulfilled.match(resultAction)) {
         console.log('Community created successfully:', resultAction.payload);
-        // Navigate to the communities list page after a short delay
-        setTimeout(() => {
-          navigate(`/communities/${resultAction.payload.communityId}`);
-        }, 2000);
+        // Navigate immediately to the community detail page
+        navigate(`/communities/${resultAction.payload.communityId}`);
       } else {
         console.error('Failed to create community:', resultAction);
         setError(resultAction.payload || 'Failed to create community. Please try again.');

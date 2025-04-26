@@ -44,6 +44,12 @@ const Communities = () => {
     };
     
     fetchCommunities();
+    
+    // Set up a refresh interval to periodically fetch communities
+    const intervalId = setInterval(fetchCommunities, 30000); // Refresh every 30 seconds
+    
+    // Clean up the interval when component unmounts
+    return () => clearInterval(intervalId);
   }, [dispatch]);
   
   const filteredCommunities = communities && communities.length > 0 

@@ -149,6 +149,8 @@ export const communitySlice = createSlice({
       .addCase(fetchUserCommunities.fulfilled, (state, action) => {
         state.loading = false;
         state.communities = action.payload;
+        // Clear any previous errors
+        state.error = null;
       })
       .addCase(fetchUserCommunities.rejected, (state, action) => {
         state.loading = false;
