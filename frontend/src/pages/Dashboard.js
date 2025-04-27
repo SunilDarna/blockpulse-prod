@@ -1,6 +1,6 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { Link as RouterLink } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -17,23 +17,32 @@ import {
   ListItemText,
   ListItemIcon,
   Avatar,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import GroupIcon from '@mui/icons-material/Group';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
 import ChatIcon from '@mui/icons-material/Chat';
+import { fetchUserCommunities } from '../features/community/communitySlice';
+import CommunityListItem from '../components/CommunityListItem';
 
 const Dashboard = () => {
   const { user } = useSelector((state) => state.auth);
+  const { communities, loading, error } = useSelector((state) => state.community);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   
-  // Mock data for demonstration
-  const myCommunities = [
-    { id: 1, name: 'Tech Enthusiasts', members: 128, role: 'Admin', unreadMessages: 5 },
-    { id: 2, name: 'Book Club', members: 45, role: 'Member', unreadMessages: 0 },
-    { id: 3, name: 'Fitness Group', members: 76, role: 'Member', unreadMessages: 12 }
-  ];
+  useEffect(() => {
+    dispatch(fetchUserCommunities());
+  }, [dispatch]);
   
+  // Get the 3 most recent communities
+  const recentCommunities = communities && communities.length > 0 
+    ? [...communities].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3)
+    : [];
+  
+  // Mock data for demonstration - in a real app, this would come from the API
   const recentAnnouncements = [
     { id: 1, community: 'Tech Enthusiasts', title: 'New Meeting Schedule', date: '2025-04-22' },
     { id: 2, community: 'Book Club', title: 'May Book Selection', date: '2025-04-20' }
@@ -117,50 +126,74 @@ const Dashboard = () => {
             </Box>
             <Divider sx={{ mb: 2 }} />
             
-            {myCommunities.length > 0 ? (
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : recentCommunities.length > 0 ? (
               <Grid container spacing={3}>
-                {myCommunities.map((community) => (
-                  <Grid item xs={12} sm={6} key={community.id}>
-                    <Card variant="outlined">
+                {recentCommunities.map((community) => (
+                  <Grid item xs={12} sm={6} key={community.communityId}>
+                    <Card 
+                      variant="outlined"
+                      sx={{
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          boxShadow: 3,
+                          transform: 'translateY(-2px)'
+                        }
+                      }}
+                      onClick={() => navigate(`/communities/${community.communityId}`)}
+                    >
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="h6" component="h3">
+                          <Typography 
+                            variant="h6" 
+                            component="h3"
+                            sx={{
+                              color: '#1976d2',
+                              cursor: 'pointer',
+                              '&:hover': {
+                                textDecoration: 'underline'
+                              }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/communities/${community.communityId}`);
+                            }}
+                          >
                             {community.name}
                           </Typography>
                           <Chip 
-                            label={community.role} 
+                            label={community.userRole} 
                             size="small" 
-                            color={community.role === 'Admin' ? 'primary' : 'default'} 
-                            variant={community.role === 'Admin' ? 'filled' : 'outlined'}
+                            color={community.userRole === 'admin' ? 'primary' : 'default'} 
+                            variant={community.userRole === 'admin' ? 'filled' : 'outlined'}
                           />
                         </Box>
                         <Typography variant="body2" color="text.secondary">
-                          {community.members} members
+                          {community.memberCount || 0} members
                         </Typography>
-                        {community.unreadMessages > 0 && (
-                          <Box sx={{ mt: 1 }}>
-                            <Chip 
-                              size="small" 
-                              color="error" 
-                              label={`${community.unreadMessages} new messages`} 
-                            />
-                          </Box>
-                        )}
                       </CardContent>
                       <CardActions>
                         <Button 
                           size="small" 
                           startIcon={<ChatIcon />}
-                          component={RouterLink}
-                          to={`/communities/${community.id}/chat`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/communities/${community.communityId}/chat`);
+                          }}
                         >
                           Chat
                         </Button>
                         <Button 
                           size="small"
                           startIcon={<AnnouncementIcon />}
-                          component={RouterLink}
-                          to={`/communities/${community.id}/announcements`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/communities/${community.communityId}/announcements`);
+                          }}
                         >
                           Announcements
                         </Button>

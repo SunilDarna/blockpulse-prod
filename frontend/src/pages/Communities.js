@@ -6,24 +6,16 @@ import {
   Typography,
   Box,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
   Button,
-  Divider,
-  Chip,
   CircularProgress,
   Alert,
   TextField,
-  InputAdornment,
-  IconButton
+  InputAdornment
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
-import GroupIcon from '@mui/icons-material/Group';
-import ChatIcon from '@mui/icons-material/Chat';
-import AnnouncementIcon from '@mui/icons-material/Announcement';
 import { fetchUserCommunities } from '../features/community/communitySlice';
+import CommunityCard from '../components/CommunityCard';
 
 const Communities = () => {
   const dispatch = useDispatch();
@@ -113,77 +105,7 @@ const Communities = () => {
         <Grid container spacing={3}>
           {filteredCommunities.map((community) => (
             <Grid item xs={12} md={6} key={community.communityId}>
-              <Card 
-                variant="outlined" 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 3
-                  }
-                }}
-                onClick={() => handleCommunityClick(community.communityId)}
-                component="div" // Ensure it's a div for better accessibility
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Typography variant="h5" component="h2" gutterBottom>
-                      {community.name}
-                    </Typography>
-                    <Chip 
-                      label={community.userRole} 
-                      color={community.userRole === 'admin' ? 'primary' : 'default'} 
-                      size="small"
-                      variant={community.userRole === 'admin' ? 'filled' : 'outlined'}
-                    />
-                  </Box>
-                  
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    {community.description}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                    {community.tags && community.tags.map((tag, index) => (
-                      <Chip key={index} label={tag} size="small" />
-                    ))}
-                  </Box>
-                  
-                  <Typography variant="body2">
-                    <strong>{community.memberCount || 0}</strong> members
-                  </Typography>
-                </CardContent>
-                
-                <Divider />
-                
-                <CardActions onClick={(e) => e.stopPropagation()}>
-                  <Button 
-                    size="small" 
-                    startIcon={<GroupIcon />}
-                    component={RouterLink}
-                    to={`/communities/${community.communityId}/members`}
-                  >
-                    Members
-                  </Button>
-                  <Button 
-                    size="small" 
-                    startIcon={<ChatIcon />}
-                    component={RouterLink}
-                    to={`/communities/${community.communityId}/chat`}
-                  >
-                    Chat
-                  </Button>
-                  <Button 
-                    size="small"
-                    startIcon={<AnnouncementIcon />}
-                    component={RouterLink}
-                    to={`/communities/${community.communityId}/announcements`}
-                  >
-                    Announcements
-                  </Button>
-                </CardActions>
-              </Card>
+              <CommunityCard community={community} />
             </Grid>
           ))}
         </Grid>

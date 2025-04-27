@@ -23,7 +23,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  IconButton
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -31,6 +32,8 @@ import AnnouncementIcon from '@mui/icons-material/Announcement';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import { 
   fetchCommunityById, 
   fetchCommunityAnnouncements, 
@@ -207,7 +210,10 @@ const CommunityDetail = () => {
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Typography variant="h4" component="h1">
+              <Typography variant="h4" component="h1" sx={{ 
+                color: '#1976d2',
+                fontWeight: 600
+              }}>
                 {currentCommunity.name}
               </Typography>
               <Chip 
@@ -321,16 +327,18 @@ const CommunityDetail = () => {
                         {announcement.content}
                       </Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                        <Button 
-                          size="small" 
-                          color={likedAnnouncements[announcement.announcementId] ? "primary" : "default"}
-                          onClick={() => handleLikeAnnouncement(announcement.announcementId)}
-                          startIcon={likedAnnouncements[announcement.announcementId] ? 
-                            <span role="img" aria-label="liked">❤️</span> : 
-                            <span role="img" aria-label="not liked">🤍</span>}
-                        >
-                          {likedAnnouncements[announcement.announcementId] ? 'Liked' : 'Like'}
-                        </Button>
+                        <Tooltip title={likedAnnouncements[announcement.announcementId] ? "Unlike" : "Like"}>
+                          <Button 
+                            size="small" 
+                            color={likedAnnouncements[announcement.announcementId] ? "primary" : "default"}
+                            onClick={() => handleLikeAnnouncement(announcement.announcementId)}
+                            startIcon={likedAnnouncements[announcement.announcementId] ? 
+                              <FavoriteIcon color="primary" /> : 
+                              <FavoriteBorderIcon />}
+                          >
+                            {likedAnnouncements[announcement.announcementId] ? 'Liked' : 'Like'}
+                          </Button>
+                        </Tooltip>
                       </Box>
                     </CardContent>
                   </Card>
