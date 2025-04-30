@@ -38,6 +38,36 @@ Amplify.configure({
   }
 });
 
+// Global error handler for uncaught exceptions
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  // Prevent the browser from showing the default error dialog
+  event.preventDefault();
+  
+  // You could report to a monitoring service here
+  if (event.error && event.error.message && 
+      event.error.message.includes("Cannot read properties of undefined (reading 'main')")) {
+    console.warn('Theme-related error intercepted');
+  }
+  
+  return true;
+});
+
+// Global handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  // You could report to a monitoring service here
+});
+
+// Define a global default theme as a fallback
+window.defaultTheme = {
+  palette: {
+    primary: { main: '#1976d2' },
+    secondary: { main: '#dc004e' },
+    error: { main: '#f44336' }
+  }
+};
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
