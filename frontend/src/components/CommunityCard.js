@@ -42,6 +42,16 @@ const CommunityCard = ({ community }) => {
       }}
       onClick={handleCommunityClick}
       component="div"
+      role="button"
+      tabIndex={0}
+      data-testid="community-item"
+      data-community-id={community.communityId}
+      aria-label={`Select ${community.name} community`}
+      onKeyPress={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleCommunityClick();
+        }
+      }}
     >
       <CardContent sx={{ flexGrow: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>

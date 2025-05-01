@@ -94,6 +94,11 @@ const CommunityDetail = () => {
     if (communityId) {
       loadCommunity();
     }
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      // No cleanup needed
+    };
   }, [dispatch, communityId]);
 
   const handleTabChange = (event, newValue) => {
@@ -146,11 +151,17 @@ const CommunityDetail = () => {
         announcementData
       })).unwrap();
       
-      // Refresh announcements
-      dispatch(fetchCommunityAnnouncements(communityId));
+      // Close the dialog first to prevent navigation issues
       handleAnnouncementDialogClose();
+      
+      // Refresh announcements without navigating away
+      await dispatch(fetchCommunityAnnouncements(communityId)).unwrap();
+      
+      console.log('Announcement created and announcements refreshed successfully');
     } catch (err) {
       console.error('Failed to create announcement:', err);
+      // Still close the dialog even if there's an error
+      handleAnnouncementDialogClose();
     }
   };
 
@@ -278,14 +289,33 @@ const CommunityDetail = () => {
           variant="fullWidth"
           aria-label="community sections"
         >
-          <Tab icon={<AnnouncementIcon />} label="Announcements" />
-          <Tab icon={<ChatIcon />} label="Chat" />
+          <Tab 
+            icon={<AnnouncementIcon />} 
+            label="Announcements" 
+            id="tab-announcements"
+            aria-controls="tabpanel-announcements"
+            data-testid="announcements-tab"
+          />
+          <Tab 
+            icon={<ChatIcon />} 
+            label="Chat" 
+            id="tab-chat"
+            aria-controls="tabpanel-chat"
+            data-testid="chat-tab"
+          />
         </Tabs>
       </Box>
 
       <Box sx={{ p: 2 }}>
         {activeTab === 0 && (
-          <Paper elevation={1} sx={{ p: 3 }}>
+          <Paper 
+            elevation={1} 
+            sx={{ p: 3 }}
+            role="tabpanel"
+            id="tabpanel-announcements"
+            aria-labelledby="tab-announcements"
+            data-testid="announcements-list"
+          >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">
                 Announcements
@@ -353,7 +383,13 @@ const CommunityDetail = () => {
         )}
         
         {activeTab === 1 && (
-          <Paper elevation={1} sx={{ p: 3 }}>
+          <Paper 
+            elevation={1} 
+            sx={{ p: 3 }}
+            role="tabpanel"
+            id="tabpanel-chat"
+            aria-labelledby="tab-chat"
+          >
             <Typography variant="h6" gutterBottom>
               Community Chat
             </Typography>

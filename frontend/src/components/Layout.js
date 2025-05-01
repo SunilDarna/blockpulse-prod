@@ -69,6 +69,8 @@ const Layout = () => {
             component={RouterLink} 
             to="/dashboard"
             selected={location.pathname === '/dashboard'}
+            data-testid="dashboard-link"
+            aria-current={location.pathname === '/dashboard' ? 'page' : undefined}
           >
             <ListItemIcon>
               <DashboardIcon />
@@ -82,6 +84,8 @@ const Layout = () => {
             component={RouterLink} 
             to="/communities"
             selected={location.pathname === '/communities'}
+            data-testid="my-communities-link"
+            aria-current={location.pathname === '/communities' ? 'page' : undefined}
           >
             <ListItemIcon>
               <GroupIcon />
@@ -95,6 +99,8 @@ const Layout = () => {
             component={RouterLink} 
             to="/create-community"
             selected={location.pathname === '/create-community'}
+            data-testid="create-community-button"
+            aria-current={location.pathname === '/create-community' ? 'page' : undefined}
           >
             <ListItemIcon>
               <AddIcon />
@@ -108,7 +114,7 @@ const Layout = () => {
       
       <List>
         <ListItem disablePadding>
-          <ListItemButton onClick={handleLogout}>
+          <ListItemButton onClick={handleLogout} data-testid="logout-button">
             <ListItemIcon>
               <LogoutIcon />
             </ListItemIcon>
