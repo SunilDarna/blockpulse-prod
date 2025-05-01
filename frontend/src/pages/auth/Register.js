@@ -36,7 +36,7 @@ const Register = () => {
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       // Use API endpoint instead of direct Amplify Auth
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://blockpulse.anviinnovate.com/api/v1'}/auth/register`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://myblockpulse.anviinnovate.com/api/v1'}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

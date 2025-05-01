@@ -156,7 +156,7 @@ const Layout = () => {
                 textDecoration: 'none',
               }}
             >
-              BlockPulse
+              MyBlockPulse
             </Typography>
             
             {isAuthenticated && (

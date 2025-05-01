@@ -12,7 +12,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export class BlockPulseStack extends cdk.Stack {
+export class MyBlockPulseStack extends cdk.Stack {
   // Public properties to expose resources to other parts of the application
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
@@ -35,8 +35,8 @@ export class BlockPulseStack extends cdk.Stack {
     const domainPrefix = isProd ? 'blockpulse-prod' : 'blockpulse-dev';
 
     // T4: Cognito User Pool
-    this.userPool = new cognito.UserPool(this, 'BlockPulseUserPool', {
-      userPoolName: `BlockPulse-${envName}-UserPool`,
+    this.userPool = new cognito.UserPool(this, 'MyBlockPulseUserPool', {
+      userPoolName: `MyBlockPulse-${envName}-UserPool`,
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -75,15 +75,15 @@ export class BlockPulseStack extends cdk.Stack {
     });
 
     // Add domain to the user pool
-    const userPoolDomain = this.userPool.addDomain('BlockPulseUserPoolDomain', {
+    const userPoolDomain = this.userPool.addDomain('MyBlockPulseUserPoolDomain', {
       cognitoDomain: {
         domainPrefix: domainPrefix,
       },
     });
 
     // Create User Pool Client
-    this.userPoolClient = this.userPool.addClient('BlockPulseUserPoolClient', {
-      userPoolClientName: `BlockPulse-${envName}-client`,
+    this.userPoolClient = this.userPool.addClient('MyBlockPulseUserPoolClient', {
+      userPoolClientName: `MyBlockPulse-${envName}-client`,
       generateSecret: false,
       authFlows: {
         userPassword: true,
@@ -102,10 +102,10 @@ export class BlockPulseStack extends cdk.Stack {
           cognito.OAuthScope.PROFILE,
         ],
         callbackUrls: [
-          isProd ? 'https://blockpulse.anviinnovate.com/callback' : 'http://localhost:3000/callback',
+          isProd ? 'https://myblockpulse.anviinnovate.com/callback' : 'http://localhost:3000/callback',
         ],
         logoutUrls: [
-          isProd ? 'https://blockpulse.anviinnovate.com/' : 'http://localhost:3000/',
+          isProd ? 'https://myblockpulse.anviinnovate.com/' : 'http://localhost:3000/',
         ],
       },
       supportedIdentityProviders: [
@@ -114,8 +114,8 @@ export class BlockPulseStack extends cdk.Stack {
     });
 
     // Create Identity Pool
-    this.identityPool = new cognito.CfnIdentityPool(this, 'BlockPulseIdentityPool', {
-      identityPoolName: `BlockPulse${envName}IdentityPool`,
+    this.identityPool = new cognito.CfnIdentityPool(this, 'MyBlockPulseIdentityPool', {
+      identityPoolName: `MyBlockPulse${envName}IdentityPool`,
       allowUnauthenticatedIdentities: true,
       cognitoIdentityProviders: [
         {
@@ -126,7 +126,7 @@ export class BlockPulseStack extends cdk.Stack {
     });
 
     // Create IAM roles for authenticated and unauthenticated users
-    this.authenticatedRole = new iam.Role(this, 'BlockPulseAuthenticatedRole', {
+    this.authenticatedRole = new iam.Role(this, 'MyBlockPulseAuthenticatedRole', {
       assumedBy: new iam.FederatedPrincipal(
         'cognito-identity.amazonaws.com',
         {
@@ -139,13 +139,13 @@ export class BlockPulseStack extends cdk.Stack {
         },
         'sts:AssumeRoleWithWebIdentity'
       ),
-      description: 'Role for authenticated BlockPulse users',
+      description: 'Role for authenticated MyBlockPulse users',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
     });
 
-    this.unauthenticatedRole = new iam.Role(this, 'BlockPulseUnauthenticatedRole', {
+    this.unauthenticatedRole = new iam.Role(this, 'MyBlockPulseUnauthenticatedRole', {
       assumedBy: new iam.FederatedPrincipal(
         'cognito-identity.amazonaws.com',
         {
@@ -158,14 +158,14 @@ export class BlockPulseStack extends cdk.Stack {
         },
         'sts:AssumeRoleWithWebIdentity'
       ),
-      description: 'Role for unauthenticated BlockPulse users',
+      description: 'Role for unauthenticated MyBlockPulse users',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
     });
 
     // Attach roles to Identity Pool
-    new cognito.CfnIdentityPoolRoleAttachment(this, 'BlockPulseIdentityPoolRoleAttachment', {
+    new cognito.CfnIdentityPoolRoleAttachment(this, 'MyBlockPulseIdentityPoolRoleAttachment', {
       identityPoolId: this.identityPool.ref,
       roles: {
         authenticated: this.authenticatedRole.roleArn,
@@ -174,8 +174,8 @@ export class BlockPulseStack extends cdk.Stack {
     });
 
     // T5: DynamoDB Table
-    this.blockPulseTable = new dynamodb.Table(this, 'BlockPulseTable', {
-      tableName: `BlockPulse-${envName}-Table`,
+    this.blockPulseTable = new dynamodb.Table(this, 'MyBlockPulseTable', {
+      tableName: `MyBlockPulse-${envName}-Table`,
       partitionKey: {
         name: 'PK',
         type: dynamodb.AttributeType.STRING,
@@ -240,13 +240,13 @@ export class BlockPulseStack extends cdk.Stack {
     
     // T6: S3 Bucket for storing user content and community assets
     // Create S3 bucket with a unique logical ID to avoid conflicts
-    const blockPulseBucketLogicalId = `BlockPulseBucket${envName.charAt(0).toUpperCase() + envName.slice(1)}`;
+    const blockPulseBucketLogicalId = `MyBlockPulseBucket${envName.charAt(0).toUpperCase() + envName.slice(1)}`;
     
     // Create the S3 bucket directly without try-catch
     // Use a completely different bucket name pattern to avoid conflicts
     this.blockPulseBucket = new s3.Bucket(this, blockPulseBucketLogicalId, {
       // Using a unique name with timestamp to ensure uniqueness
-      bucketName: `bp-${envName}-${Date.now().toString().substring(0, 10)}-${this.region}`,
+      bucketName: `mbp-${envName}-${Date.now().toString().substring(0, 10)}-${this.region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // Block all public access
       encryption: s3.BucketEncryption.S3_MANAGED, // Use S3 managed encryption
       enforceSSL: true, // Enforce SSL for all requests
@@ -261,7 +261,7 @@ export class BlockPulseStack extends cdk.Stack {
             s3.HttpMethods.POST,
           ],
           allowedOrigins: isProd 
-            ? ['https://blockpulse.anviinnovate.com'] 
+            ? ['https://myblockpulse.anviinnovate.com'] 
             : ['http://localhost:3000'],
           allowedHeaders: ['*'],
           maxAge: 3000,
@@ -290,7 +290,7 @@ export class BlockPulseStack extends cdk.Stack {
     // Output the stack name for reference
     new cdk.CfnOutput(this, 'StackName', {
       value: this.stackName,
-      description: 'The name of the BlockPulse stack',
+      description: 'The name of the MyBlockPulse stack',
     });
 
     // Output Cognito User Pool ID
@@ -350,12 +350,12 @@ export class BlockPulseStack extends cdk.Stack {
     });
 
     // T7: REST API Gateway
-    this.restApi = new apigateway.RestApi(this, 'BlockPulseApi', {
-      restApiName: `BlockPulse-${envName}-API`,
-      description: 'API for BlockPulse application',
+    this.restApi = new apigateway.RestApi(this, 'MyBlockPulseApi', {
+      restApiName: `MyBlockPulse-${envName}-API`,
+      description: 'API for MyBlockPulse application',
       defaultCorsPreflightOptions: {
         allowOrigins: isProd 
-          ? ['https://blockpulse.anviinnovate.com'] 
+          ? ['https://myblockpulse.anviinnovate.com'] 
           : ['http://localhost:3000'],
         allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowHeaders: [
@@ -376,7 +376,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Create Lambda authorizer
     const authorizerLambda = new lambda.Function(this, 'LambdaAuthorizer', {
-      functionName: `BlockPulse-${envName}-Authorizer`,
+      functionName: `MyBlockPulse-${envName}-Authorizer`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/lambda-authorizer.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -402,7 +402,7 @@ export class BlockPulseStack extends cdk.Stack {
     
     // Register Lambda
     const registerLambda = new lambda.Function(this, 'RegisterLambda', {
-      functionName: `BlockPulse-${envName}-Register`,
+      functionName: `MyBlockPulse-${envName}-Register`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/register.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -424,7 +424,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Confirm Registration Lambda
     const confirmRegistrationLambda = new lambda.Function(this, 'ConfirmRegistrationLambda', {
-      functionName: `BlockPulse-${envName}-ConfirmRegistration`,
+      functionName: `MyBlockPulse-${envName}-ConfirmRegistration`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/confirm-registration.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -446,7 +446,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Login Lambda
     const loginLambda = new lambda.Function(this, 'LoginLambda', {
-      functionName: `BlockPulse-${envName}-Login`,
+      functionName: `MyBlockPulse-${envName}-Login`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/login.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -468,7 +468,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Forgot Password Lambda
     const forgotPasswordLambda = new lambda.Function(this, 'ForgotPasswordLambda', {
-      functionName: `BlockPulse-${envName}-ForgotPassword`,
+      functionName: `MyBlockPulse-${envName}-ForgotPassword`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/forgot-password.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -488,7 +488,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Confirm Forgot Password Lambda
     const confirmForgotPasswordLambda = new lambda.Function(this, 'ConfirmForgotPasswordLambda', {
-      functionName: `BlockPulse-${envName}-ConfirmForgotPassword`,
+      functionName: `MyBlockPulse-${envName}-ConfirmForgotPassword`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/confirm-forgot-password.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -508,7 +508,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Refresh Token Lambda
     const refreshTokenLambda = new lambda.Function(this, 'RefreshTokenLambda', {
-      functionName: `BlockPulse-${envName}-RefreshToken`,
+      functionName: `MyBlockPulse-${envName}-RefreshToken`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/refresh-token.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -528,7 +528,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Logout Lambda
     const logoutLambda = new lambda.Function(this, 'LogoutLambda', {
-      functionName: `BlockPulse-${envName}-Logout`,
+      functionName: `MyBlockPulse-${envName}-Logout`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/logout.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -547,7 +547,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Resend Confirmation Lambda
     const resendConfirmationLambda = new lambda.Function(this, 'ResendConfirmationLambda', {
-      functionName: `BlockPulse-${envName}-ResendConfirmation`,
+      functionName: `MyBlockPulse-${envName}-ResendConfirmation`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/resend-confirmation.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -567,7 +567,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Get User Lambda
     const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
-      functionName: `BlockPulse-${envName}-GetUser`,
+      functionName: `MyBlockPulse-${envName}-GetUser`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/get-user.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -639,7 +639,7 @@ export class BlockPulseStack extends cdk.Stack {
     
     // Create a DynamoDB table to store WebSocket connections
     this.connectionsTable = new dynamodb.Table(this, 'ConnectionsTable', {
-      tableName: `BlockPulse-${envName}-Connections`,
+      tableName: `MyBlockPulse-${envName}-Connections`,
       partitionKey: {
         name: 'connectionId',
         type: dynamodb.AttributeType.STRING,
@@ -651,7 +651,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Create a cleanup Lambda to remove unconfirmed users
     const cleanupUnconfirmedUsersLambda = new lambda.Function(this, 'CleanupUnconfirmedUsersLambda', {
-      functionName: `BlockPulse-${envName}-CleanupUnconfirmedUsers`,
+      functionName: `MyBlockPulse-${envName}-CleanupUnconfirmedUsers`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/auth/cleanup-unconfirmed-users.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -689,7 +689,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // Create WebSocket API
     this.webSocketApi = new apigatewayv2.CfnApi(this, 'WebSocketApi', {
-      name: `BlockPulse-${envName}-WebSocketApi`,
+      name: `MyBlockPulse-${envName}-WebSocketApi`,
       protocolType: 'WEBSOCKET',
       routeSelectionExpression: '$request.body.action',
     });
@@ -711,7 +711,7 @@ export class BlockPulseStack extends cdk.Stack {
     
     // $connect handler
     const connectHandler = new lambda.Function(this, 'WebSocketConnectHandler', {
-      functionName: `BlockPulse-${envName}-WebSocketConnect`,
+      functionName: `MyBlockPulse-${envName}-WebSocketConnect`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/websocket/connect.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -735,7 +735,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // $disconnect handler
     const disconnectHandler = new lambda.Function(this, 'WebSocketDisconnectHandler', {
-      functionName: `BlockPulse-${envName}-WebSocketDisconnect`,
+      functionName: `MyBlockPulse-${envName}-WebSocketDisconnect`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/websocket/disconnect.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -753,7 +753,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // sendMessage handler
     const sendMessageHandler = new lambda.Function(this, 'WebSocketSendMessageHandler', {
-      functionName: `BlockPulse-${envName}-WebSocketSendMessage`,
+      functionName: `MyBlockPulse-${envName}-WebSocketSendMessage`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/websocket/send-message.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -778,7 +778,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // joinCommunity handler
     const joinCommunityHandler = new lambda.Function(this, 'WebSocketJoinCommunityHandler', {
-      functionName: `BlockPulse-${envName}-WebSocketJoinCommunity`,
+      functionName: `MyBlockPulse-${envName}-WebSocketJoinCommunity`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/websocket/join-community.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),
@@ -796,7 +796,7 @@ export class BlockPulseStack extends cdk.Stack {
 
     // leaveCommunity handler
     const leaveCommunityHandler = new lambda.Function(this, 'WebSocketLeaveCommunityHandler', {
-      functionName: `BlockPulse-${envName}-WebSocketLeaveCommunity`,
+      functionName: `MyBlockPulse-${envName}-WebSocketLeaveCommunity`,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'dist/websocket/leave-community.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend')),

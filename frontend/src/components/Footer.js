@@ -27,7 +27,7 @@ const Footer = () => {
         <Grid container spacing={4}>
           <Grid item xs={12} sm={4}>
             <Typography variant="h6" color="primary" gutterBottom>
-              BlockPulse
+              MyBlockPulse
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Connect, collaborate, and communicate with communities that matter to you.
@@ -81,7 +81,7 @@ const Footer = () => {
         <Divider sx={{ my: 3 }} />
         
         <Typography variant="body2" color="text.secondary" align="center">
-          © {new Date().getFullYear()} BlockPulse. All rights reserved.
+          © {new Date().getFullYear()} MyBlockPulse. All rights reserved.
         </Typography>
       </Container>
     </Box>

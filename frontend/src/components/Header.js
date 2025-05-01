@@ -90,7 +90,7 @@ const Header = () => {
               textDecoration: 'none',
             }}
           >
-            BlockPulse
+            MyBlockPulse
           </Typography>
 
           {/* Mobile menu */}
@@ -151,7 +151,7 @@ const Header = () => {
               textDecoration: 'none',
             }}
           >
-            BlockPulse
+            MyBlockPulse
           </Typography>
 
           {/* Desktop menu */}

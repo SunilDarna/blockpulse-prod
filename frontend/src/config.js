@@ -10,12 +10,12 @@ const config = {
   // API Gateway
   apiGateway: {
     REGION: 'us-east-1',
-    URL: 'https://blockpulse-api.anviinnovate.com/v1', // Production API endpoint
+    URL: 'https://myblockpulse-api.anviinnovate.com/v1', // Production API endpoint
   },
   // WebSocket API
   webSocket: {
     REGION: 'us-east-1',
-    URL: 'wss://blockpulse-ws.anviinnovate.com/v1', // Production WebSocket endpoint
+    URL: 'wss://myblockpulse-ws.anviinnovate.com/v1', // Production WebSocket endpoint
   }
 };
 
