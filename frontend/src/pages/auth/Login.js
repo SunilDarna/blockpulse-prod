@@ -28,6 +28,7 @@ const Login = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      setLoginError(null);
       // Use Amplify Auth directly
       const user = await Auth.signIn(values.username, values.password);
       
@@ -43,10 +44,16 @@ const Login = () => {
     } catch (error) {
       console.error('Error signing in:', error);
       
-      if (error.code === 'UserNotConfirmedException') {
+      // Provide user-friendly error messages
+      if (error.code === 'UserNotFoundException') {
+        setLoginError('Account not found. Please check your email or username.');
+      } else if (error.code === 'NotAuthorizedException') {
+        setLoginError('Incorrect password. Please try again.');
+      } else if (error.code === 'UserNotConfirmedException') {
+        setLoginError('Please verify your account first.');
         navigate('/confirm-registration', { state: { username: values.username } });
       } else {
-        setLoginError(error.message || 'Failed to sign in');
+        setLoginError('Login failed. Please try again later.');
       }
     } finally {
       setSubmitting(false);
@@ -68,7 +75,7 @@ const Login = () => {
         </Typography>
         
         {loginError && (
-          <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+          <Alert severity="error" sx={{ width: '100%', mt: 2 }} data-testid="login-error">
             {loginError}
           </Alert>
         )}
@@ -88,7 +95,11 @@ const Login = () => {
                 id="username"
                 label="Username or Email"
                 name="username"
-                autoComplete="username"
+                autoComplete="username email"
+                inputProps={{
+                  inputMode: "email"
+                }}
+                data-testid="username-input"
                 autoFocus
                 error={touched.username && Boolean(errors.username)}
                 helperText={touched.username && errors.username}
@@ -112,6 +123,7 @@ const Login = () => {
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
                 disabled={isSubmitting}
+                data-testid="login-button"
               >
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>

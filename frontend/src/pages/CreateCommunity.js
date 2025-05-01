@@ -96,19 +96,19 @@ const CreateCommunity = () => {
         <Divider sx={{ mb: 3 }} />
         
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3 }} data-testid="create-community-error">
             {error}
           </Alert>
         )}
         
         {reduxError && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3 }} data-testid="create-community-error">
             {reduxError}
           </Alert>
         )}
         
         {success && (
-          <Alert severity="success" sx={{ mb: 3 }}>
+          <Alert severity="success" sx={{ mb: 3 }} data-testid="create-community-success">
             Community created successfully! Redirecting...
           </Alert>
         )}
@@ -124,7 +124,7 @@ const CreateCommunity = () => {
           onSubmit={handleSubmit}
         >
           {({ isSubmitting, errors, touched }) => (
-            <Form>
+            <Form data-testid="create-community-form">
               <Box sx={{ mb: 3 }}>
                 <Field
                   as={TextField}
@@ -135,6 +135,7 @@ const CreateCommunity = () => {
                   variant="outlined"
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
+                  data-testid="community-name-input"
                 />
               </Box>
               
@@ -150,6 +151,7 @@ const CreateCommunity = () => {
                   rows={4}
                   error={touched.description && Boolean(errors.description)}
                   helperText={touched.description && errors.description}
+                  data-testid="community-description-input"
                 />
               </Box>
               
@@ -161,11 +163,13 @@ const CreateCommunity = () => {
                       value="open" 
                       control={<Field as={Radio} name="joinType" />} 
                       label="Open (Anyone can join)" 
+                      data-testid="community-type-public"
                     />
                     <FormControlLabel 
                       value="invite" 
                       control={<Field as={Radio} name="joinType" />} 
                       label="Invite Only (Members need approval)" 
+                      data-testid="community-type-private"
                     />
                   </RadioGroup>
                 </FormControl>
@@ -209,6 +213,7 @@ const CreateCommunity = () => {
                   color="primary"
                   disabled={isSubmitting || loading || success}
                   startIcon={(isSubmitting || loading) && <CircularProgress size={20} />}
+                  data-testid="submit-create-community"
                 >
                   {(isSubmitting || loading) ? 'Creating...' : 'Create Community'}
                 </Button>
