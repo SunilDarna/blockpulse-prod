@@ -10,7 +10,7 @@ class ApiStack extends Stack {
     super(scope, id, props);
 
     // Create DynamoDB Table
-    const table = new Table(this, 'BlockPulseTable', {
+    const table = new Table(this, 'MyBlockPulseTable', {
       partitionKey: { name: 'PK', type: AttributeType.STRING },
       sortKey: { name: 'SK', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
@@ -25,7 +25,7 @@ class ApiStack extends Stack {
     });
 
     // Create Cognito User Pool
-    const userPool = new UserPool(this, 'BlockPulseUserPool', {
+    const userPool = new UserPool(this, 'MyBlockPulseUserPool', {
       selfSignUpEnabled: true,
       autoVerify: { email: true },
       standardAttributes: {
@@ -42,13 +42,13 @@ class ApiStack extends Stack {
       },
       accountRecovery: 1, // EMAIL_ONLY
       emailSettings: {
-        from: 'no-reply@blockpulse.anviinnovate.com',
-        replyTo: 'support@blockpulse.anviinnovate.com',
+        from: 'no-reply@myblockpulse.anviinnovate.com',
+        replyTo: 'support@myblockpulse.anviinnovate.com',
       },
     });
 
     // Create User Pool Client
-    const userPoolClient = new UserPoolClient(this, 'BlockPulseUserPoolClient', {
+    const userPoolClient = new UserPoolClient(this, 'MyBlockPulseUserPoolClient', {
       userPool,
       generateSecret: false,
       authFlows: {
@@ -58,7 +58,7 @@ class ApiStack extends Stack {
     });
 
     // Create API Gateway
-    const api = new RestApi(this, 'BlockPulseApi', {
+    const api = new RestApi(this, 'MyBlockPulseApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: ['*'], // In production, restrict to your domain
         allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

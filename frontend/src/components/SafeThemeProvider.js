@@ -85,31 +85,8 @@ const SafeThemeProvider = ({ theme, children }) => {
     }
   }, [theme]);
 
-  // Add error handling for theme access
-  React.useEffect(() => {
-    // Protect against undefined theme properties
-    const originalGetProperty = Object.getOwnPropertyDescriptor(Object.prototype, 'main');
-    
-    Object.defineProperty(Object.prototype, 'main', {
-      get: function() {
-        if (!this || this === undefined) {
-          console.warn('Attempted to access .main on undefined/null object');
-          return '#1976d2'; // Default primary color
-        }
-        return originalGetProperty ? originalGetProperty.get.call(this) : undefined;
-      },
-      configurable: true
-    });
-
-    return () => {
-      // Restore original behavior when component unmounts
-      if (originalGetProperty) {
-        Object.defineProperty(Object.prototype, 'main', originalGetProperty);
-      } else {
-        delete Object.prototype.main;
-      }
-    };
-  }, []);
+  // We don't need to modify Object.prototype, which is dangerous
+  // Instead, we'll rely on the properly structured theme object
 
   return <ThemeProvider theme={safeTheme}>{children}</ThemeProvider>;
 };

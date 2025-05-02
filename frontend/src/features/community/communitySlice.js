@@ -72,6 +72,66 @@ export const fetchCommunityAnnouncements = createAsyncThunk(
   }
 );
 
+export const joinCommunity = createAsyncThunk(
+  'community/joinCommunity',
+  async (communityId, { rejectWithValue }) => {
+    try {
+      console.log(`Joining community with ID: ${communityId}`);
+      const response = await communityService.joinCommunity(communityId);
+      console.log('Community joined successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error joining community ${communityId} in thunk:`, error);
+      return rejectWithValue(error.message || 'Failed to join community');
+    }
+  }
+);
+
+export const fetchPendingMembers = createAsyncThunk(
+  'community/fetchPendingMembers',
+  async (communityId, { rejectWithValue }) => {
+    try {
+      console.log(`Fetching pending members for community: ${communityId}`);
+      const response = await communityService.getPendingMembers(communityId);
+      console.log('Pending members fetched successfully:', response);
+      return { communityId, pendingMembers: response };
+    } catch (error) {
+      console.error(`Error fetching pending members for ${communityId} in thunk:`, error);
+      return rejectWithValue(error.message || 'Failed to fetch pending members');
+    }
+  }
+);
+
+export const approveMember = createAsyncThunk(
+  'community/approveMember',
+  async ({ communityId, userId }, { rejectWithValue }) => {
+    try {
+      console.log(`Approving member ${userId} for community: ${communityId}`);
+      const response = await communityService.approveMember(communityId, userId);
+      console.log('Member approved successfully:', response);
+      return { communityId, userId, response };
+    } catch (error) {
+      console.error(`Error approving member ${userId} for ${communityId} in thunk:`, error);
+      return rejectWithValue(error.message || 'Failed to approve member');
+    }
+  }
+);
+
+export const updateMemberRole = createAsyncThunk(
+  'community/updateMemberRole',
+  async ({ communityId, userId, role }, { rejectWithValue }) => {
+    try {
+      console.log(`Updating role for member ${userId} in community ${communityId} to ${role}`);
+      const response = await communityService.updateMemberRole(communityId, userId, role);
+      console.log('Member role updated successfully:', response);
+      return { communityId, userId, role, response };
+    } catch (error) {
+      console.error(`Error updating role for member ${userId} in ${communityId} in thunk:`, error);
+      return rejectWithValue(error.message || 'Failed to update member role');
+    }
+  }
+);
+
 export const deleteCommunity = createAsyncThunk(
   'community/deleteCommunity',
   async (communityId, { rejectWithValue }) => {
@@ -90,12 +150,16 @@ const initialState = {
   communities: [],
   currentCommunity: null,
   announcements: [],
+  pendingMembers: {},
   loading: false,
   error: null,
   success: false,
   announcementLoading: false,
   announcementError: null,
-  announcementSuccess: false
+  announcementSuccess: false,
+  memberLoading: false,
+  memberError: null,
+  memberSuccess: false
 };
 
 export const communitySlice = createSlice({
@@ -114,6 +178,12 @@ export const communitySlice = createSlice({
     },
     clearAnnouncementSuccess: (state) => {
       state.announcementSuccess = false;
+    },
+    clearMemberError: (state) => {
+      state.memberError = null;
+    },
+    clearMemberSuccess: (state) => {
+      state.memberSuccess = false;
     }
   },
   extraReducers: (builder) => {
@@ -201,6 +271,123 @@ export const communitySlice = createSlice({
         state.announcementError = action.payload;
       })
       
+      // Join community
+      .addCase(joinCommunity.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(joinCommunity.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the community in the communities array if it exists
+        const communityIndex = state.communities.findIndex(
+          c => c.communityId === action.payload.communityId
+        );
+        if (communityIndex >= 0) {
+          state.communities[communityIndex] = {
+            ...state.communities[communityIndex],
+            ...action.payload,
+            userRole: action.payload.userRole || 'member'
+          };
+        } else {
+          // Add the community to the array if it doesn't exist
+          state.communities.push({
+            ...action.payload,
+            userRole: action.payload.userRole || 'member'
+          });
+        }
+        // Update current community if it matches
+        if (state.currentCommunity && state.currentCommunity.communityId === action.payload.communityId) {
+          state.currentCommunity = {
+            ...state.currentCommunity,
+            ...action.payload,
+            userRole: action.payload.userRole || 'member'
+          };
+        }
+      })
+      .addCase(joinCommunity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Fetch pending members
+      .addCase(fetchPendingMembers.pending, (state) => {
+        state.memberLoading = true;
+        state.memberError = null;
+      })
+      .addCase(fetchPendingMembers.fulfilled, (state, action) => {
+        state.memberLoading = false;
+        state.pendingMembers[action.payload.communityId] = action.payload.pendingMembers;
+      })
+      .addCase(fetchPendingMembers.rejected, (state, action) => {
+        state.memberLoading = false;
+        state.memberError = action.payload;
+      })
+      
+      // Approve member
+      .addCase(approveMember.pending, (state) => {
+        state.memberLoading = true;
+        state.memberError = null;
+        state.memberSuccess = false;
+      })
+      .addCase(approveMember.fulfilled, (state, action) => {
+        state.memberLoading = false;
+        state.memberSuccess = true;
+        
+        // Remove the approved member from pending members
+        if (state.pendingMembers[action.payload.communityId]) {
+          state.pendingMembers[action.payload.communityId] = state.pendingMembers[action.payload.communityId]
+            .filter(member => member.userId !== action.payload.userId);
+        }
+        
+        // Update member count in the community
+        const communityIndex = state.communities.findIndex(
+          c => c.communityId === action.payload.communityId
+        );
+        if (communityIndex >= 0) {
+          state.communities[communityIndex].memberCount = 
+            (state.communities[communityIndex].memberCount || 0) + 1;
+        }
+        
+        // Update current community if it matches
+        if (state.currentCommunity && state.currentCommunity.communityId === action.payload.communityId) {
+          state.currentCommunity.memberCount = (state.currentCommunity.memberCount || 0) + 1;
+        }
+      })
+      .addCase(approveMember.rejected, (state, action) => {
+        state.memberLoading = false;
+        state.memberError = action.payload;
+      })
+      
+      // Update member role
+      .addCase(updateMemberRole.pending, (state) => {
+        state.memberLoading = true;
+        state.memberError = null;
+        state.memberSuccess = false;
+      })
+      .addCase(updateMemberRole.fulfilled, (state, action) => {
+        state.memberLoading = false;
+        state.memberSuccess = true;
+        
+        // If the current user's role was updated in the current community
+        if (state.currentCommunity && 
+            state.currentCommunity.communityId === action.payload.communityId && 
+            action.payload.response.isCurrentUser) {
+          state.currentCommunity.userRole = action.payload.role;
+          
+          // Also update in communities array
+          const communityIndex = state.communities.findIndex(
+            c => c.communityId === action.payload.communityId
+          );
+          if (communityIndex >= 0) {
+            state.communities[communityIndex].userRole = action.payload.role;
+          }
+        }
+      })
+      .addCase(updateMemberRole.rejected, (state, action) => {
+        state.memberLoading = false;
+        state.memberError = action.payload;
+      })
+      
       // Delete community
       .addCase(deleteCommunity.pending, (state) => {
         state.loading = true;
@@ -213,6 +400,10 @@ export const communitySlice = createSlice({
         );
         if (state.currentCommunity && state.currentCommunity.communityId === action.payload) {
           state.currentCommunity = null;
+        }
+        // Clean up any pending members data
+        if (state.pendingMembers[action.payload]) {
+          delete state.pendingMembers[action.payload];
         }
       })
       .addCase(deleteCommunity.rejected, (state, action) => {
@@ -227,7 +418,9 @@ export const {
   clearCommunitySuccess, 
   resetCommunityState,
   clearAnnouncementError,
-  clearAnnouncementSuccess
+  clearAnnouncementSuccess,
+  clearMemberError,
+  clearMemberSuccess
 } = communitySlice.actions;
 
 export default communitySlice.reducer;

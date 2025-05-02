@@ -21,13 +21,28 @@ export const communityService = {
       const session = await Auth.currentSession();
       const idToken = session.getIdToken().getJwtToken();
       
-      const response = await API.post('communityApi', '/communities', {
-        body: communityData,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+      // Add error handling and retry logic
+      let retries = 3;
+      let response;
+      
+      while (retries > 0) {
+        try {
+          response = await API.post('communityApi', '/communities', {
+            body: communityData,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`
+            }
+          });
+          break; // Success, exit the retry loop
+        } catch (err) {
+          retries--;
+          if (retries === 0) throw err; // No more retries, rethrow
+          console.log(`API call failed, retrying... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
         }
-      });
+      }
+      
       console.log('Community created successfully:', response);
       
       // Enhance the response with the full data needed for the UI
@@ -81,7 +96,8 @@ export const communityService = {
     } catch (error) {
       console.error('Error fetching user communities:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
-      throw error;
+      // Return empty array instead of throwing to prevent UI crashes
+      return [];
     }
   },
 
@@ -163,6 +179,124 @@ export const communityService = {
       return response;
     } catch (error) {
       console.error(`Error fetching announcements for community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      // Return empty array instead of throwing to prevent UI crashes
+      return [];
+    }
+  },
+  
+  /**
+   * Join a community
+   * @param {string} communityId - The community ID
+   * @returns {Promise<Object>} - Join response
+   */
+  joinCommunity: async (communityId) => {
+    try {
+      console.log(`Joining community ${communityId}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.post('communityApi', `/communities/${communityId}/join`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Community joined successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error joining community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  },
+  
+  /**
+   * Get pending members for a community (admin only)
+   * @param {string} communityId - The community ID
+   * @returns {Promise<Array<Object>>} - List of pending members
+   */
+  getPendingMembers: async (communityId) => {
+    try {
+      console.log(`Fetching pending members for community ${communityId}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.get('communityApi', `/communities/${communityId}/members/pending`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Pending members fetched successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error fetching pending members for community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      // Return empty array instead of throwing to prevent UI crashes
+      return [];
+    }
+  },
+  
+  /**
+   * Approve a pending member (admin only)
+   * @param {string} communityId - The community ID
+   * @param {string} userId - The user ID to approve
+   * @returns {Promise<Object>} - Approval response
+   */
+  approveMember: async (communityId, userId) => {
+    try {
+      console.log(`Approving member ${userId} for community ${communityId}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.post('communityApi', `/communities/${communityId}/members`, {
+        body: { userId, action: 'approve' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Member approved successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error approving member ${userId} for community ${communityId}:`, error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
+  },
+  
+  /**
+   * Update a member's role (admin only)
+   * @param {string} communityId - The community ID
+   * @param {string} userId - The user ID to update
+   * @param {string} role - The new role ('admin' or 'member')
+   * @returns {Promise<Object>} - Update response
+   */
+  updateMemberRole: async (communityId, userId, role) => {
+    try {
+      console.log(`Updating role for member ${userId} in community ${communityId} to ${role}`);
+      
+      // Get the current user's JWT token
+      const session = await Auth.currentSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      const response = await API.put('communityApi', `/communities/${communityId}/members/role`, {
+        body: { userId, role },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+      console.log('Member role updated successfully:', response);
+      return response;
+    } catch (error) {
+      console.error(`Error updating role for member ${userId} in community ${communityId}:`, error);
       console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }

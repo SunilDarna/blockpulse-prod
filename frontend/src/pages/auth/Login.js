@@ -71,7 +71,7 @@ const Login = () => {
         }}
       >
         <Typography component="h1" variant="h5">
-          Sign in to BlockPulse
+          Sign in to MyBlockPulse
         </Typography>
         
         {loginError && (

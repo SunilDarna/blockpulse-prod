@@ -63,13 +63,13 @@ const LandingPage = () => {
           <Grid container spacing={4} alignItems="center">
             <Grid item xs={12} md={6}>
               <Typography variant="h2" component="h1" gutterBottom>
-                BlockPulse
+                MyBlockPulse
               </Typography>
               <Typography variant="h5" component="h2" gutterBottom>
                 Connect, Collaborate, and Communicate in Real-Time
               </Typography>
               <Typography variant="body1" paragraph sx={{ mb: 4 }}>
-                BlockPulse is a powerful community management platform that enables users to create and join communities, 
+                MyBlockPulse is a powerful community management platform that enables users to create and join communities, 
                 share announcements, and chat in real-time with other participants.
               </Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -115,7 +115,7 @@ const LandingPage = () => {
           Key Features
         </Typography>
         <Typography variant="body1" align="center" paragraph sx={{ mb: 6 }}>
-          Discover what makes BlockPulse the ideal platform for community management
+          Discover what makes MyBlockPulse the ideal platform for community management
         </Typography>
         
         <Grid container spacing={4}>
@@ -146,7 +146,7 @@ const LandingPage = () => {
             How It Works
           </Typography>
           <Typography variant="body1" align="center" paragraph sx={{ mb: 6 }}>
-            Getting started with BlockPulse is easy
+            Getting started with MyBlockPulse is easy
           </Typography>
           
           <Grid container spacing={isMobile ? 4 : 8}>
@@ -184,7 +184,7 @@ const LandingPage = () => {
       {/* Call to Action */}
       <Container maxWidth="md" sx={{ textAlign: 'center', py: 8 }}>
         <Typography variant="h4" component="h2" gutterBottom>
-          Ready to join the BlockPulse community?
+          Ready to join the MyBlockPulse community?
         </Typography>
         <Typography variant="body1" paragraph sx={{ mb: 4 }}>
           Create your account today and start connecting with communities that matter to you.

@@ -58,38 +58,57 @@ const StyledButton = styled(Button)(({ theme, color = 'primary', variant = 'cont
   // Try to get colors from theme, fall back to defaults if not available
   let colorObj;
   try {
-    colorObj = theme?.palette?.[color] || fallbackColors[color] || fallbackColors.primary;
+    // First check if theme exists and has palette
+    if (!theme || !theme.palette) {
+      colorObj = fallbackColors[color] || fallbackColors.primary;
+    } else {
+      // Then check if the specific color exists in the palette
+      // AND if it has the 'main' property defined
+      if (theme.palette[color] && theme.palette[color].main !== undefined) {
+        colorObj = theme.palette[color];
+      } else {
+        colorObj = fallbackColors[color] || fallbackColors.primary;
+      }
+    }
   } catch (e) {
     console.warn('Error accessing theme colors, using fallback', e);
     colorObj = fallbackColors[color] || fallbackColors.primary;
   }
 
+  // Ensure colorObj has all required properties with fallbacks
+  const safeColorObj = {
+    main: colorObj?.main || fallbackColors.primary.main,
+    dark: colorObj?.dark || fallbackColors.primary.dark,
+    light: colorObj?.light || fallbackColors.primary.light,
+    contrastText: colorObj?.contrastText || fallbackColors.primary.contrastText
+  };
+
   // Variant-specific styles with fallbacks
   if (variant === 'contained') {
     return {
       ...baseStyles,
-      backgroundColor: colorObj.main || '#1976d2',
-      color: colorObj.contrastText || '#ffffff',
+      backgroundColor: safeColorObj.main,
+      color: safeColorObj.contrastText,
       '&:hover': {
-        backgroundColor: colorObj.dark || '#0f5baa',
+        backgroundColor: safeColorObj.dark,
       },
     };
   } else if (variant === 'outlined') {
     return {
       ...baseStyles,
       backgroundColor: 'transparent',
-      color: colorObj.main || '#1976d2',
-      borderColor: colorObj.main || '#1976d2',
+      color: safeColorObj.main,
+      borderColor: safeColorObj.main,
       '&:hover': {
         backgroundColor: 'rgba(25, 118, 210, 0.04)',
-        borderColor: colorObj.dark || '#0f5baa',
+        borderColor: safeColorObj.dark,
       },
     };
   } else {
     // Text variant
     return {
       ...baseStyles,
-      color: colorObj.main || '#1976d2',
+      color: safeColorObj.main,
       '&:hover': {
         backgroundColor: 'rgba(25, 118, 210, 0.04)',
       },
