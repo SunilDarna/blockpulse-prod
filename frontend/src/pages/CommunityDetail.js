@@ -8,7 +8,6 @@ import {
   Paper,
   Grid,
   Chip,
-  Button,
   Divider,
   CircularProgress,
   Alert,
@@ -26,6 +25,8 @@ import {
   IconButton,
   Tooltip
 } from '@mui/material';
+import SafeButton from '../components/SafeButton';
+import ButtonWrapper from '../components/ButtonWrapper';
 import GroupIcon from '@mui/icons-material/Group';
 import ChatIcon from '@mui/icons-material/Chat';
 import AnnouncementIcon from '@mui/icons-material/Announcement';
@@ -78,13 +79,9 @@ const CommunityDetail = () => {
         console.log(`Loading community details for ID: ${communityId}`);
         await dispatch(fetchCommunityById(communityId)).unwrap();
         
-        // Also fetch announcements
-        try {
-          await dispatch(fetchCommunityAnnouncements(communityId)).unwrap();
-        } catch (err) {
-          console.error('Failed to fetch announcements:', err);
-          // Don't set an error state here, as we still want to show the community
-        }
+        // Also fetch announcements - no try/catch needed as the thunk handles errors
+        // and always returns a value (empty array if error)
+        dispatch(fetchCommunityAnnouncements(communityId));
       } catch (err) {
         console.error('Failed to fetch community details:', err);
         setLocalError(err || 'Failed to fetch community details. Please try again.');
@@ -146,22 +143,27 @@ const CommunityDetail = () => {
       
       console.log(`Creating announcement in community ${communityId}:`, announcementData);
       
-      await dispatch(createAnnouncement({
-        communityId,
-        announcementData
-      })).unwrap();
-      
-      // Close the dialog first to prevent navigation issues
+      // Close the dialog first to prevent UI issues if there's an error
       handleAnnouncementDialogClose();
       
-      // Refresh announcements without navigating away
-      await dispatch(fetchCommunityAnnouncements(communityId)).unwrap();
-      
-      console.log('Announcement created and announcements refreshed successfully');
+      try {
+        await dispatch(createAnnouncement({
+          communityId,
+          announcementData
+        })).unwrap();
+        
+        // Refresh announcements without navigating away
+        await dispatch(fetchCommunityAnnouncements(communityId)).unwrap();
+        
+        console.log('Announcement created and announcements refreshed successfully');
+      } catch (dispatchErr) {
+        console.error('Failed to create announcement:', dispatchErr);
+        setLocalError(dispatchErr?.message || 'Failed to create announcement. Please try again.');
+      }
     } catch (err) {
-      console.error('Failed to create announcement:', err);
-      // Still close the dialog even if there's an error
+      console.error('Unexpected error in handleCreateAnnouncement:', err);
       handleAnnouncementDialogClose();
+      setLocalError('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -179,9 +181,9 @@ const CommunityDetail = () => {
         <Alert 
           severity="error" 
           action={
-            <Button color="inherit" size="small" onClick={handleBack}>
+            <ButtonWrapper color="primary" variant="text" size="small" onClick={handleBack}>
               Back to Communities
-            </Button>
+            </ButtonWrapper>
           }
         >
           {error || localError || 'Failed to load community details'}
@@ -196,9 +198,9 @@ const CommunityDetail = () => {
         <Alert 
           severity="warning" 
           action={
-            <Button color="inherit" size="small" onClick={handleBack}>
+            <ButtonWrapper color="primary" variant="text" size="small" onClick={handleBack}>
               Back to Communities
-            </Button>
+            </ButtonWrapper>
           }
         >
           Community not found. It may have been deleted or you don't have access.
@@ -209,13 +211,13 @@ const CommunityDetail = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Button
+      <SafeButton
         startIcon={<ArrowBackIcon />}
         onClick={handleBack}
         sx={{ mb: 2 }}
       >
         Back to Communities
-      </Button>
+      </SafeButton>
 
       <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
         <Grid container spacing={3}>
@@ -260,21 +262,21 @@ const CommunityDetail = () => {
                 </Typography>
               </CardContent>
               <CardActions>
-                <Button 
+                <SafeButton 
                   size="small" 
                   startIcon={<GroupIcon />}
                   onClick={() => navigate(`/communities/${communityId}/members`)}
                 >
                   View Members
-                </Button>
+                </SafeButton>
                 {currentCommunity.userRole === 'admin' && (
-                  <Button
+                  <SafeButton
                     size="small"
                     color="error"
                     onClick={() => setDeleteDialogOpen(true)}
                   >
                     Delete Community
-                  </Button>
+                  </SafeButton>
                 )}
               </CardActions>
             </Card>
@@ -321,13 +323,13 @@ const CommunityDetail = () => {
                 Announcements
               </Typography>
               {currentCommunity.userRole === 'admin' && (
-                <Button 
+                <SafeButton 
                   variant="contained" 
                   color="primary"
                   onClick={handleAnnouncementDialogOpen}
                 >
                   Create Announcement
-                </Button>
+                </SafeButton>
               )}
             </Box>
             <Divider sx={{ mb: 2 }} />
@@ -358,7 +360,7 @@ const CommunityDetail = () => {
                       </Typography>
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                         <Tooltip title={likedAnnouncements[announcement.announcementId] ? "Unlike" : "Like"}>
-                          <Button 
+                          <SafeButton 
                             size="small" 
                             color={likedAnnouncements[announcement.announcementId] ? "primary" : "default"}
                             onClick={() => handleLikeAnnouncement(announcement.announcementId)}
@@ -367,7 +369,7 @@ const CommunityDetail = () => {
                               <FavoriteBorderIcon />}
                           >
                             {likedAnnouncements[announcement.announcementId] ? 'Liked' : 'Like'}
-                          </Button>
+                          </SafeButton>
                         </Tooltip>
                       </Box>
                     </CardContent>
@@ -438,8 +440,8 @@ const CommunityDetail = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleAnnouncementDialogClose}>Cancel</Button>
-          <Button 
+          <SafeButton onClick={handleAnnouncementDialogClose}>Cancel</SafeButton>
+          <SafeButton 
             variant="contained" 
             color="primary" 
             onClick={handleCreateAnnouncement}
@@ -447,7 +449,7 @@ const CommunityDetail = () => {
             disabled={!announcementText.trim()}
           >
             Post
-          </Button>
+          </SafeButton>
         </DialogActions>
       </Dialog>
 
@@ -464,14 +466,14 @@ const CommunityDetail = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button 
+          <SafeButton onClick={() => setDeleteDialogOpen(false)}>Cancel</SafeButton>
+          <SafeButton 
             onClick={handleDeleteCommunity} 
             color="error" 
             variant="contained"
           >
             Delete
-          </Button>
+          </SafeButton>
         </DialogActions>
       </Dialog>
     </Container>
